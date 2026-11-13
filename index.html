@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>无限画布 · 把想法、生成与沉淀，都放进一张画布</title>
 <meta name="description" content="无限画布是一台跑在本机上的 AI 创作工作台：自定义工作流、在线生图、无限画布、素材库串成一条流。免安装、断网可启动、数据留在本机。">
-<meta name="theme-color" content="#05060f">
+<meta name="theme-color" content="#f9fafb">
 <meta property="og:type" content="website">
 <meta property="og:title" content="无限画布 · Infinite Canvas">
 <meta property="og:description" content="本地运行的 AI 创作画布。四个模块，一条完整链路。">
@@ -16,14 +16,6 @@
 <noscript><style>[data-reveal]{opacity:1!important;transform:none!important}</style></noscript>
 </head>
 <body>
-
-<div class="ambient" aria-hidden="true">
-  <div class="ambient-grid"></div>
-  <div class="ambient-spot"></div>
-  <div class="ambient-glow ambient-glow-left"></div>
-  <div class="ambient-glow ambient-glow-right"></div>
-  <div class="cursor-glow" id="cursorGlow"></div>
-</div>
 
 <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
 
@@ -111,7 +103,7 @@
             <div class="node-sub">把 IMAGE 0 的光照迁移到 IMAGE 2</div>
           </div>
           <div class="node node-c glass-plate">
-            <div class="node-head"><span class="node-tag violet">生成</span><span class="node-id">03</span></div>
+            <div class="node-head"><span class="node-tag soft">生成</span><span class="node-id">03</span></div>
             <div class="thumb-grid"><i class="thumb-b"></i><i class="thumb-c"></i><i class="thumb-d"></i><i class="thumb-a"></i></div>
             <div class="node-title">九宫格多视角</div>
             <div class="node-sub">4 张结果 · 已沉淀</div>
@@ -129,6 +121,7 @@
             <div class="node-sub">可推送到在线平台</div>
           </div>
           <div class="minimap glass-plate" aria-hidden="true"><i></i><i></i><i></i><i></i><span></span></div>
+          <div class="canvas-cta" aria-hidden="true"><i></i>生成</div>
         </div>
       </div>
       </div>

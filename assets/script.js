@@ -7,31 +7,9 @@
   var $ = function (s, root) { return (root || document).querySelector(s); };
   var $$ = function (s, root) { return Array.prototype.slice.call((root || document).querySelectorAll(s)); };
 
-  /* ---------- 滚动揭示 ---------- */
-  (function reveal() {
-    var items = $$('[data-reveal]');
-    if (reduceMotion || !('IntersectionObserver' in window)) {
-      items.forEach(function (el) { el.classList.add('in-view'); });
-      return;
-    }
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (e.isIntersecting) {
-          e.target.classList.add('in-view');
-          io.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
-    items.forEach(function (el, i) {
-      el.style.transitionDelay = Math.min(i % 4, 3) * 70 + 'ms';
-      io.observe(el);
-    });
-  })();
-
-  /* ---------- 导航 / 进度条 / 鼠标环境光 ---------- */
+  /* ---------- 导航 / 进度条 ---------- */
   var header = $('#siteHeader');
   var progress = $('#scrollProgress');
-  var cursorGlow = $('#cursorGlow');
   var ticking = false;
   function onScroll() {
     if (ticking) return;
@@ -48,13 +26,6 @@
   }
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
-
-  if (cursorGlow && !reduceMotion) {
-    window.addEventListener('pointermove', function (e) {
-      cursorGlow.style.setProperty('--mx', e.clientX + 'px');
-      cursorGlow.style.setProperty('--my', e.clientY + 'px');
-    }, { passive: true });
-  }
 
   var navToggle = $('#navToggle');
   var nav = $('.site-nav');
@@ -122,9 +93,9 @@
       .catch(function () { clearTimeout(timer); });
   })();
 
-  /* ---------- 鼠标交互粒子球 ----------
-     球面均匀分布 → 自转 → 透视投影 → 鼠标斥力 + 切向涡旋 → 弹簧回归。
-     参考 A UROS 的粒子云观感，配色换成午夜玻璃的冰蓝 / 紫。 */
+  /* ---------- 鼠标交互粒子球（收敛版） ----------
+     球面均匀分布 → 慢速自转 → 透视投影 → 轻斥力 → 弹簧回归。
+     纸面上的墨点球：无发光叠加、无闪烁、无呼吸，仅一点暖色呼应强调色。 */
   (function particleSphere() {
     var canvas = $('#particleCanvas');
     var band = $('#motion');
@@ -137,8 +108,8 @@
     var raf = 0;
     var t = 0;
     var mouse = { x: -9999, y: -9999 };
-    var RAD = 150, RAD2 = RAD * RAD;
-    var SPRING = 0.014, DAMP = 0.90, FORCE = 2.9;
+    var RAD = 120, RAD2 = RAD * RAD;
+    var SPRING = 0.020, DAMP = 0.86, FORCE = 1.25;
 
     function makeParticles(n) {
       var out = [];
@@ -147,14 +118,13 @@
         var y = 1 - (i / (n - 1)) * 2;
         var r = Math.sqrt(Math.max(0, 1 - y * y));
         var th = ga * i;
-        var jitter = 0.90 + Math.random() * 0.14; // 让球壳有厚度，不是完美薄壳
+        var jitter = 0.92 + Math.random() * 0.12;
         out.push({
           bx: Math.cos(th) * r * jitter,
           by: y * jitter,
           bz: Math.sin(th) * r * jitter,
-          size: 1.0 + Math.random() * 1.8,
-          violet: Math.random() < 0.16,
-          twinkle: Math.random() * Math.PI * 2,
+          size: 0.9 + Math.random() * 1.25,
+          warm: Math.random() < 0.09,
           ox: 0, oy: 0, vx: 0, vy: 0
         });
       }
@@ -173,7 +143,7 @@
       cx = wide ? W * 0.70 : W * 0.5;
       cy = wide ? H * 0.52 : H * 0.71;
       R = Math.min(wide ? 232 : 152, H * (wide ? 0.40 : 0.26));
-      RAD = wide ? 155 : 110;
+      RAD = wide ? 120 : 90;
       RAD2 = RAD * RAD;
       var next = wide ? (reduceMotion ? 2200 : 3400) : (reduceMotion ? 1200 : 1800);
       if (next !== count || !particles.length) {
@@ -187,25 +157,22 @@
       t = reduceMotion ? 0 : now;
       ctx.clearRect(0, 0, W, H);
 
-      // 球体背后的柔光
-      var halo = ctx.createRadialGradient(cx, cy, R * 0.1, cx, cy, R * 1.65);
-      halo.addColorStop(0, 'rgba(102,58,243,0.14)');
-      halo.addColorStop(0.45, 'rgba(27,115,180,0.11)');
-      halo.addColorStop(1, 'rgba(5,6,15,0)');
+      // 极淡的暖纸光，不做发光特效
+      var halo = ctx.createRadialGradient(cx, cy, R * 0.15, cx, cy, R * 1.6);
+      halo.addColorStop(0, 'rgba(251,225,209,0.30)');
+      halo.addColorStop(1, 'rgba(251,225,209,0)');
       ctx.fillStyle = halo;
       ctx.fillRect(cx - R * 1.7, cy - R * 1.7, R * 3.4, R * 3.4);
 
-      var a = t * 0.00022;
+      var a = t * 0.000085;
       var ca = Math.cos(a), sa = Math.sin(a);
-      var b = reduceMotion ? 0 : Math.sin(t * 0.00035) * 0.22;
+      var b = reduceMotion ? 0 : Math.sin(t * 0.00018) * 0.10;
       var cb = Math.cos(b), sb = Math.sin(b);
-      var breathe = reduceMotion ? 1 : 1 + Math.sin(t * 0.0009) * 0.018;
-      var rr = R * breathe;
+      var rr = R;
 
-      ctx.globalCompositeOperation = 'lighter';
       for (var i = 0; i < particles.length; i++) {
         var p = particles[i];
-        // 绕 Y 轴自转，再绕 X 轴轻微摆动
+        // 绕 Y 轴慢速自转，再绕 X 轴极轻摆动
         var x1 = p.bx * ca + p.bz * sa;
         var z1 = -p.bx * sa + p.bz * ca;
         var y2 = p.by * cb - z1 * sb;
@@ -214,17 +181,16 @@
         var sx = cx + x1 * rr * persp;
         var sy = cy + y2 * rr * persp;
 
-        // 鼠标斥力 + 切向涡旋
+        // 轻微鼠标斥力 + 弹簧回归
         var px = sx + p.ox, py = sy + p.oy;
         var dx = px - mouse.x, dy = py - mouse.y;
         var d2 = dx * dx + dy * dy;
         if (d2 < RAD2 && d2 > 0.5) {
           var d = Math.sqrt(d2);
           var f = (1 - d / RAD) * (1 - d / RAD) * FORCE;
-          p.vx += (dx / d) * f - (dy / d) * f * 0.42;
-          p.vy += (dy / d) * f + (dx / d) * f * 0.42;
+          p.vx += (dx / d) * f;
+          p.vy += (dy / d) * f;
         }
-        // 弹簧回归 + 阻尼
         p.vx -= p.ox * SPRING;
         p.vy -= p.oy * SPRING;
         p.vx *= DAMP;
@@ -234,15 +200,13 @@
 
         var depth = (persp - 0.73) / 0.85; // 0(远) → 1(近)
         if (depth < 0) depth = 0;
-        var tw = reduceMotion ? 1 : 0.78 + 0.22 * Math.sin(t * 0.002 + p.twinkle);
-        var alpha = (0.22 + depth * 0.78) * tw;
-        var size = p.size * persp * (0.75 + depth * 0.6);
-        ctx.fillStyle = p.violet
-          ? 'rgba(153,120,255,' + alpha.toFixed(3) + ')'
-          : 'rgba(182,217,252,' + alpha.toFixed(3) + ')';
+        var alpha = 0.12 + depth * 0.52;
+        var size = p.size * persp * (0.8 + depth * 0.4);
+        ctx.fillStyle = p.warm
+          ? 'rgba(93,42,26,' + alpha.toFixed(3) + ')'
+          : 'rgba(17,24,39,' + alpha.toFixed(3) + ')';
         ctx.fillRect(sx + p.ox - size / 2, sy + p.oy - size / 2, size, size);
       }
-      ctx.globalCompositeOperation = 'source-over';
 
       if (!reduceMotion) raf = requestAnimationFrame(draw);
     }
