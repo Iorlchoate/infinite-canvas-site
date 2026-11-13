@@ -9,7 +9,7 @@
   var db=[].slice.call(dots.children);
   function wps(){
     var vw=innerWidth,vh=innerHeight,m=vw<760,
-    ov={x:960,y:476,s:m?vw*1.5/1920:Math.min(vw*.9/1920,vh*.52/953),ax:.5,ay:m?.72:.68},list=[ov];
+    T=vh*.52,os=Math.min(vw*.86/1920,(vh-T-24)/953),ov={x:960,y:476,s:m?vw*1.5/1920:os,ax:.5,ay:m?.72:(T+476*os)/vh},list=[ov];
     if(m)ov.x=700;
     R.forEach(function(r){list.push(m?{x:r.x,y:r.y,s:Math.min(1.6,vw*.92/r.w,vh*.4/r.h),ax:.5,ay:.7}
       :{x:r.x,y:r.y,s:Math.min(1.6,vw*.56/r.w,vh*.78/r.h),ax:.65,ay:.52})});
@@ -25,7 +25,7 @@
     s=Math.exp(lerp(Math.log(a.s),Math.log(b.s),t)),x=lerp(a.x,b.x,t),y=lerp(a.y,b.y,t),
     tx=lerp(a.ax,b.ax,t)*innerWidth-x*s,ty=lerp(a.ay,b.ay,t)*vh-y*s;
     world.style.transform="translate("+tx+"px,"+ty+"px) scale("+s+")";
-    stage.style.backgroundPosition=tx+"px "+ty+"px";stage.style.backgroundSize=(40*s)+"px "+(40*s)+"px";
+    stage.style.backgroundPosition=tx+"px "+ty+"px";var g=40*s;while(g<30)g*=2;stage.style.backgroundSize=g+"px "+g+"px";
     var k=Math.round(p);
     if(k!==last){last=k;caps.forEach(function(c){c.classList.toggle("on",+c.dataset.i===k)});db.forEach(function(d,j){d.classList.toggle("on",j===k)});
       if(k===4&&!ran){ran=true;run()}}
