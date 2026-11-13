@@ -7,6 +7,13 @@
   var $ = function (s, root) { return (root || document).querySelector(s); };
   var $$ = function (s, root) { return Array.prototype.slice.call((root || document).querySelectorAll(s)); };
 
+  /* ---------- 中文衬线降级 ----------
+     Windows 没有现代中文衬线（大字号会落到点阵感很强的 SimSun），
+     标题改用系统无衬线；macOS / iOS 保留宋体，编辑感不变。 */
+  if (/Windows NT/i.test(navigator.userAgent || '')) {
+    document.documentElement.classList.add('no-cjk-serif');
+  }
+
   /* ---------- 导航 / 进度条 ---------- */
   var header = $('#siteHeader');
   var progress = $('#scrollProgress');
@@ -93,130 +100,272 @@
       .catch(function () { clearTimeout(timer); });
   })();
 
-  /* ---------- 鼠标交互粒子球（收敛版） ----------
-     球面均匀分布 → 慢速自转 → 透视投影 → 轻斥力 → 弹簧回归。
-     纸面上的墨点球：无发光叠加、无闪烁、无呼吸，仅一点暖色呼应强调色。 */
-  (function particleSphere() {
+  /* ---------- 粒子带：动效与文案互相对应 ----------
+     文案里的三个词 = 三个节点；悬停 / 点击 → 粒子从球壳重组成三簇并连线。
+     「重新连接」= 打散后拉线回归；鼠标扰动 = 连接被拉扯但不断。
+     全程无发光、无闪烁、无渐变动画，只做慢速形态插值。 */
+  (function motionBand() {
     var canvas = $('#particleCanvas');
     var band = $('#motion');
     if (!canvas || !band || !canvas.getContext) return;
     var ctx = canvas.getContext('2d');
+    var statusEl = $('#motionStatus');
+    var kwEls = $$('.kw');
+    var nodeEls = $$('.pnode');
+    var replayBtn = $('#replayMotion');
+    var trigger = $('#reconnectTrigger');
+
     var W = 0, H = 0, DPR = 1, cx = 0, cy = 0, R = 0;
-    var particles = [];
-    var count = 0;
-    var visible = true;
-    var raf = 0;
-    var t = 0;
-    var mouse = { x: -9999, y: -9999 };
+    var particles = [], count = 0;
+    var visible = true, raf = 0, last = 0;
+    var rot = 0, morph = 0, targetMorph = 0;
+    var hover = -1, pinned = -1, node = -1;
+    var mouse = { x: -9999, y: -9999 }, pointerIn = false, displaced = 0;
+    var replayActive = false, holdUntil = 0, statusTimer1 = 0, statusTimer2 = 0;
     var RAD = 120, RAD2 = RAD * RAD;
     var SPRING = 0.020, DAMP = 0.86, FORCE = 1.25;
+    var CENTERS = [[-0.78, -0.40], [0.00, 0.42], [0.80, -0.38]];
+    var NODE_NOTES = [
+      '参考图 · 1–9 张，每张都有 IMAGE 编号',
+      '提示词 · 关键词可批量替换，随时改写',
+      '生成结果 · 直接摆回画布，继续连线'
+    ];
+    var DEFAULT_HINT = '移动鼠标，扰动这些粒子';
 
     function makeParticles(n) {
       var out = [];
       var ga = Math.PI * (3 - Math.sqrt(5)); // 黄金角，球面均匀分布
+      var per = Math.ceil(n / 3);
+      var localIndex = [0, 0, 0];
       for (var i = 0; i < n; i++) {
         var y = 1 - (i / (n - 1)) * 2;
         var r = Math.sqrt(Math.max(0, 1 - y * y));
         var th = ga * i;
         var jitter = 0.92 + Math.random() * 0.12;
+        var cluster = i % 3;
+        var k = localIndex[cluster]++;
+        var ly = 1 - (k / (per - 1)) * 2;
+        var lr = Math.sqrt(Math.max(0, 1 - ly * ly));
+        var lth = ga * k + cluster * 1.7;
+        var c = CENTERS[cluster];
         out.push({
-          bx: Math.cos(th) * r * jitter,
-          by: y * jitter,
-          bz: Math.sin(th) * r * jitter,
+          sx: Math.cos(th) * r * jitter, sy: y * jitter, sz: Math.sin(th) * r * jitter,
+          tx: c[0] + Math.cos(lth) * lr * 0.40,
+          ty: c[1] + ly * 0.40,
+          tz: Math.sin(lth) * lr * 0.26,
+          cluster: cluster,
           size: 0.9 + Math.random() * 1.25,
-          warm: Math.random() < 0.09,
-          ox: 0, oy: 0, vx: 0, vy: 0
+          tone: Math.random() < 0.055 ? 'red' : (Math.random() < 0.085 ? 'warm' : 'ink'),
+          ox: 0, oy: 0, vx: 0, vy: 0,
+          px: 0, py: 0, bx: 0, by: 0, alpha: 0, sz: 1
         });
       }
       return out;
     }
 
+    function project(c) { return { x: cx + c[0] * R, y: cy + c[1] * R }; }
+
     function resize() {
       var rect = band.getBoundingClientRect();
-      W = Math.max(1, rect.width);
-      H = Math.max(1, rect.height);
+      W = Math.max(1, rect.width); H = Math.max(1, rect.height);
       DPR = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.round(W * DPR);
-      canvas.height = Math.round(H * DPR);
+      canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       var wide = W > 900;
       cx = wide ? W * 0.70 : W * 0.5;
       cy = wide ? H * 0.52 : H * 0.71;
       R = Math.min(wide ? 232 : 152, H * (wide ? 0.40 : 0.26));
-      RAD = wide ? 120 : 90;
-      RAD2 = RAD * RAD;
+      RAD = wide ? 120 : 90; RAD2 = RAD * RAD;
       var next = wide ? (reduceMotion ? 2200 : 3400) : (reduceMotion ? 1200 : 1800);
-      if (next !== count || !particles.length) {
-        count = next;
-        particles = makeParticles(count);
-      }
+      if (next !== count || !particles.length) { count = next; particles = makeParticles(count); }
+      nodeEls.forEach(function (el, i) {
+        var p = project(CENTERS[i]);
+        el.style.left = p.x + 'px';
+        el.style.top = (p.y + R * 0.40) + 'px';
+      });
     }
 
-    function draw(now) {
-      if (!visible) return;
-      t = reduceMotion ? 0 : now;
+    function setStatus(s) { if (statusEl && statusEl.textContent !== s) statusEl.textContent = s; }
+
+    /* 形态过渡由交互触发的定时补间驱动，不依赖 rAF 是否在运行 */
+    var tweenTimer = 0;
+    function tweenMorph(to) {
+      targetMorph = to;
+      clearInterval(tweenTimer);
+      tweenTimer = 0;
+      if (reduceMotion) { morph = to; render(0); return; }
+      var from = morph, start = performance.now(), dur = 520;
+      tweenTimer = setInterval(function () {
+        var k = Math.min(1, (performance.now() - start) / dur);
+        var e = 1 - Math.pow(1 - k, 3);
+        morph = from + (to - from) * e;
+        render(performance.now());
+        if (k >= 1) { morph = to; clearInterval(tweenTimer); tweenTimer = 0; }
+      }, 40);
+    }
+
+    function setNode(i) {
+      node = i;
+      tweenMorph(i >= 0 ? 1 : 0);
+      kwEls.forEach(function (el, k) {
+        el.classList.toggle('active', k === i);
+        el.setAttribute('aria-pressed', k === i ? 'true' : 'false');
+      });
+      nodeEls.forEach(function (el, k) {
+        el.classList.toggle('on', i >= 0);
+        el.classList.toggle('focus', k === i);
+      });
+      // 状态由交互直接驱动，不依赖动画循环（低性能 / 离屏时也能正确反馈）
+      if (!replayActive) setStatus(i >= 0 ? NODE_NOTES[i] : DEFAULT_HINT);
+    }
+    function applyNode() { setNode(pinned >= 0 ? pinned : hover); }
+
+    function replay() {
+      clearTimeout(statusTimer1); clearTimeout(statusTimer2);
+      replayActive = true;
+      pinned = -1; hover = -1; applyNode();
+      setStatus('正在重新连接…');
+      var now = performance.now();
+      holdUntil = now + 3500;
+      if (reduceMotion) {
+        replayActive = false;
+        setStatus('已重新连接 · 可以再来一次');
+        draw(0);
+        return;
+      }
+      for (var i = 0; i < particles.length; i++) {
+        var p = particles[i], a = Math.random() * Math.PI * 2, m = 1.6 + Math.random() * 3.4;
+        p.vx += Math.cos(a) * m; p.vy += Math.sin(a) * m;
+      }
+      statusTimer1 = setTimeout(function () {
+        replayActive = false;
+        setStatus('已重新连接 · 可以再来一次');
+      }, 1100);
+      statusTimer2 = setTimeout(function () {
+        setStatus(node >= 0 ? NODE_NOTES[node] : DEFAULT_HINT);
+      }, 3500);
+    }
+
+    function render(now) {
+      var dt = last ? Math.min(50, now - last) : 16;
+      last = now;
+      if (!reduceMotion) rot += 0.000085 * dt * (1 - morph); // 拓扑态不自转
       ctx.clearRect(0, 0, W, H);
 
-      // 极淡的暖纸光，不做发光特效
+      // 极淡暖纸底，不做发光
       var halo = ctx.createRadialGradient(cx, cy, R * 0.15, cx, cy, R * 1.6);
-      halo.addColorStop(0, 'rgba(251,225,209,0.30)');
+      halo.addColorStop(0, 'rgba(251,225,209,0.22)');
       halo.addColorStop(1, 'rgba(251,225,209,0)');
       ctx.fillStyle = halo;
       ctx.fillRect(cx - R * 1.7, cy - R * 1.7, R * 3.4, R * 3.4);
 
-      var a = t * 0.000085;
-      var ca = Math.cos(a), sa = Math.sin(a);
-      var b = reduceMotion ? 0 : Math.sin(t * 0.00018) * 0.10;
-      var cb = Math.cos(b), sb = Math.sin(b);
-      var rr = R;
-
+      var ca = Math.cos(rot), sa = Math.sin(rot);
+      displaced = 0;
       for (var i = 0; i < particles.length; i++) {
         var p = particles[i];
-        // 绕 Y 轴慢速自转，再绕 X 轴极轻摆动
-        var x1 = p.bx * ca + p.bz * sa;
-        var z1 = -p.bx * sa + p.bz * ca;
-        var y2 = p.by * cb - z1 * sb;
-        var z2 = p.by * sb + z1 * cb;
-        var persp = 2.7 / (2.7 + z2 * 0.95);
-        var sx = cx + x1 * rr * persp;
-        var sy = cy + y2 * rr * persp;
+        var X = p.sx + (p.tx - p.sx) * morph;
+        var Y = p.sy + (p.ty - p.sy) * morph;
+        var Z = p.sz + (p.tz - p.sz) * morph;
+        var x1 = X * ca + Z * sa;
+        var z1 = -X * sa + Z * ca;
+        var persp = 2.7 / (2.7 + z1 * 0.95);
+        var sx = cx + x1 * R * persp;
+        var sy = cy + Y * R * persp;
 
-        // 轻微鼠标斥力 + 弹簧回归
         var px = sx + p.ox, py = sy + p.oy;
         var dx = px - mouse.x, dy = py - mouse.y;
         var d2 = dx * dx + dy * dy;
-        if (d2 < RAD2 && d2 > 0.5) {
+        if (!reduceMotion && d2 < RAD2 && d2 > 0.5) {
           var d = Math.sqrt(d2);
           var f = (1 - d / RAD) * (1 - d / RAD) * FORCE;
-          p.vx += (dx / d) * f;
-          p.vy += (dy / d) * f;
+          p.vx += (dx / d) * f; p.vy += (dy / d) * f;
         }
-        p.vx -= p.ox * SPRING;
-        p.vy -= p.oy * SPRING;
-        p.vx *= DAMP;
-        p.vy *= DAMP;
-        p.ox += p.vx;
-        p.oy += p.vy;
+        p.vx -= p.ox * SPRING; p.vy -= p.oy * SPRING;
+        p.vx *= DAMP; p.vy *= DAMP;
+        p.ox += p.vx; p.oy += p.vy;
 
-        var depth = (persp - 0.73) / 0.85; // 0(远) → 1(近)
-        if (depth < 0) depth = 0;
-        var alpha = 0.12 + depth * 0.52;
-        var size = p.size * persp * (0.8 + depth * 0.4);
-        ctx.fillStyle = p.warm
-          ? 'rgba(93,42,26,' + alpha.toFixed(3) + ')'
-          : 'rgba(17,24,39,' + alpha.toFixed(3) + ')';
-        ctx.fillRect(sx + p.ox - size / 2, sy + p.oy - size / 2, size, size);
+        var depth = (persp - 0.73) / 0.85; if (depth < 0) depth = 0;
+        p.bx = sx; p.by = sy; p.px = sx + p.ox; p.py = sy + p.oy;
+        p.alpha = 0.16 + depth * 0.62;
+        p.sz = p.size * persp * (0.8 + depth * 0.4);
+        if (Math.abs(p.ox) + Math.abs(p.oy) > 16) displaced++;
       }
 
-      if (!reduceMotion) raf = requestAnimationFrame(draw);
+      // 节点连线：呼应「连线与重组」
+      if (morph > 0.02) {
+        ctx.strokeStyle = 'rgba(17,24,39,' + (0.22 * morph).toFixed(3) + ')';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (var k = 0; k < 2; k++) {
+          var A = project(CENTERS[k]), B = project(CENTERS[k + 1]);
+          ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y);
+        }
+        ctx.stroke();
+      }
+      // 被推开的粒子拉一道细线连回原位：呼应「重新连接」
+      if (!reduceMotion) {
+        ctx.strokeStyle = 'rgba(17,24,39,0.10)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (var j = 0; j < particles.length; j += 13) {
+          var q = particles[j];
+          if (Math.abs(q.ox) + Math.abs(q.oy) > 18) {
+            ctx.moveTo(q.bx, q.by); ctx.lineTo(q.px, q.py);
+          }
+        }
+        ctx.stroke();
+      }
+
+      // 墨点（少量红 / 暖棕点，不发光）
+      for (var m = 0; m < particles.length; m++) {
+        var p2 = particles[m];
+        var a2 = p2.alpha;
+        if (node >= 0 && p2.cluster !== node) a2 *= 0.62;
+        ctx.fillStyle = p2.tone === 'red'
+          ? 'rgba(239,68,68,' + Math.min(0.85, a2 * 1.15).toFixed(3) + ')'
+          : (p2.tone === 'warm'
+            ? 'rgba(93,42,26,' + a2.toFixed(3) + ')'
+            : 'rgba(17,24,39,' + a2.toFixed(3) + ')');
+        ctx.fillRect(p2.px - p2.sz / 2, p2.py - p2.sz / 2, p2.sz, p2.sz);
+      }
+
+      // 扰动态的次要反馈；节点态 / 重连态由事件直接驱动
+      if (!reduceMotion && !replayActive && performance.now() > holdUntil) {
+        setStatus(node >= 0 ? NODE_NOTES[node]
+          : (pointerIn && displaced > 12 ? '连接被拉扯，但不会断' : DEFAULT_HINT));
+      }
+    }
+
+    function draw(now) {
+      if (visible) render(now);
+      if (!reduceMotion) raf = requestAnimationFrame(draw); // 离屏不停循环，避免 IO 误判后无法恢复
+    }
+
+    // 文案 ↔ 动效
+    kwEls.forEach(function (el, i) {
+      el.addEventListener('mouseenter', function () { hover = i; applyNode(); });
+      el.addEventListener('mouseleave', function () { hover = -1; applyNode(); });
+      el.addEventListener('focus', function () { hover = i; applyNode(); });
+      el.addEventListener('blur', function () { hover = -1; applyNode(); });
+      el.addEventListener('click', function () { pinned = pinned === i ? -1 : i; applyNode(); });
+    });
+    if (replayBtn) replayBtn.addEventListener('click', replay);
+    if (trigger) {
+      trigger.addEventListener('click', replay);
+      trigger.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); replay(); }
+      });
     }
 
     function toLocal(e) {
       var rect = canvas.getBoundingClientRect();
-      mouse.x = e.clientX - rect.left;
-      mouse.y = e.clientY - rect.top;
+      mouse.x = e.clientX - rect.left; mouse.y = e.clientY - rect.top;
+      pointerIn = true;
     }
-    function leave() { mouse.x = -9999; mouse.y = -9999; }
+    function leave() {
+      mouse.x = -9999; mouse.y = -9999; pointerIn = false;
+      hover = -1; applyNode();
+    }
 
     resize();
     window.addEventListener('resize', function () { resize(); if (reduceMotion) draw(0); }, { passive: true });
@@ -226,13 +375,7 @@
       band.addEventListener('pointerleave', leave, { passive: true });
       if ('IntersectionObserver' in window) {
         new IntersectionObserver(function (entries) {
-          entries.forEach(function (e) {
-            var on = e.isIntersecting;
-            if (on === visible) return;
-            visible = on;
-            if (on) { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); }
-            else { cancelAnimationFrame(raf); raf = 0; }
-          });
+          entries.forEach(function (e) { visible = e.isIntersecting; });
         }, { threshold: 0 }).observe(band);
       }
       raf = requestAnimationFrame(draw);
