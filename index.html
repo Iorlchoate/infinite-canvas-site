@@ -12,8 +12,18 @@
 <meta property="og:image" content="assets/screenshots/canvas-overview.png">
 <link rel="icon" type="image/png" href="assets/icon.png">
 <link rel="stylesheet" href="assets/styles.css">
-<script>document.documentElement.classList.add('js');</script>
-<noscript><style>[data-reveal]{opacity:1!important;transform:none!important}</style></noscript>
+<script>
+/* 主题在首屏前落定，避免闪白 */
+(function () {
+  try {
+    var t = localStorage.getItem('ic-theme');
+    if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    var q = new URLSearchParams(location.search).get('theme');
+    if (q === 'dark' || q === 'light') t = q;
+    if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  } catch (e) {}
+})();
+</script>
 </head>
 <body>
 
@@ -21,23 +31,30 @@
 
 <header class="site-header" id="siteHeader">
   <div class="wrap header-inner">
-    <a class="brand" href="#top" aria-label="无限画布 首页">
+    <a class="brand" href="#top" aria-label="无限画布 首页" data-i18n-aria="brand.aria">
       <span class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 32 32" fill="none"><path class="logo-accent" d="M16 3 29 10.5 16 18 3 10.5 16 3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M3 16.5 16 24 29 16.5" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M3 22 16 29.5 29 22" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
       </span>
-      <span class="brand-name">无限画布</span>
-      <span class="brand-en">INFINITE CANVAS</span>
+      <span class="brand-name" data-i18n="brand.name">无限画布</span>
+      <span class="brand-en" data-i18n="brand.en">INFINITE CANVAS</span>
     </a>
-    <nav class="site-nav" aria-label="主导航">
-      <a href="#why">为什么本地</a>
-      <a href="#features">功能</a>
-      <a href="#screens">界面</a>
-      <a href="#faq">常见问题</a>
-      <a class="nav-github" href="https://github.com/Iorlchoate/Infinite-Canvas-UDG" target="_blank" rel="noopener">GitHub <span aria-hidden="true">↗</span></a>
+    <nav class="site-nav" aria-label="主导航" data-i18n-aria="nav.aria">
+      <a href="#why" data-i18n="nav.why">为什么本地</a>
+      <a href="#features" data-i18n="nav.features">功能</a>
+      <a href="#screens" data-i18n="nav.screens">界面</a>
+      <a href="#faq" data-i18n="nav.faq">常见问题</a>
+      <a class="nav-github" href="https://github.com/Iorlchoate/Infinite-Canvas-UDG" target="_blank" rel="noopener"><span data-i18n="nav.github">GitHub</span> <span aria-hidden="true">↗</span></a>
     </nav>
+    <div class="header-tools">
+      <button class="tool-btn" id="themeToggle" type="button" aria-label="切换明暗主题" data-i18n-aria="tool.theme">
+        <svg class="ico-moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16.5 12.4A7 7 0 0 1 7.6 3.5a6.6 6.6 0 1 0 8.9 8.9Z"/></svg>
+        <svg class="ico-sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v1.8M10 16.2V18M2 10h1.8M16.2 10H18M4.4 4.4l1.3 1.3M14.3 14.3l1.3 1.3M15.6 4.4l-1.3 1.3M5.7 14.3l-1.3 1.3"/></svg>
+      </button>
+      <button class="tool-btn lang-btn" id="langToggle" type="button" aria-label="Switch to English"><span>EN</span></button>
+    </div>
     <a class="btn btn-primary btn-sm header-cta" href="https://github.com/Iorlchoate/Infinite-Canvas-UDG/releases/latest" target="_blank" rel="noopener">
       <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      下载
+      <span data-i18n="cta.download">下载</span>
     </a>
     <button class="nav-toggle" id="navToggle" aria-label="展开菜单" aria-expanded="false"><span></span><span></span><span></span></button>
   </div>
@@ -47,40 +64,40 @@
 
   <!-- HERO -->
   <section class="hero wrap">
-    <div class="eyebrow" data-reveal><span class="eyebrow-line"></span>LOCAL-FIRST AI CANVAS<span class="eyebrow-line"></span></div>
-    <h1 class="hero-title" data-reveal>把想法、生成与沉淀，<br><span class="gradient-text">都放进一张无限画布</span></h1>
-    <p class="hero-sub" data-reveal>无限画布是一台跑在你自己电脑上的 AI 创作工作台。内置便携运行时，双击即用；自定义工作流、在线生图、无限画布、素材库串成一条流，从一句提示词到归档成册，不用离开画布。</p>
-    <div class="hero-actions" data-reveal>
+    <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="hero.eyebrow">LOCAL-FIRST AI CANVAS</span><span class="eyebrow-line"></span></div>
+    <h1 class="hero-title"><span data-i18n="hero.title1">把想法、生成与沉淀，</span><br><span class="gradient-text" data-i18n="hero.title2">都放进一张无限画布</span></h1>
+    <p class="hero-sub" data-i18n="hero.sub">无限画布是一台跑在你自己电脑上的 AI 创作工作台。内置便携运行时，双击即用；自定义工作流、在线生图、无限画布、素材库串成一条流，从一句提示词到归档成册，不用离开画布。</p>
+    <div class="hero-actions">
       <a class="btn btn-primary" href="https://github.com/Iorlchoate/Infinite-Canvas-UDG/releases/latest" target="_blank" rel="noopener">
         <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        下载 Windows 绿色包
+        <span data-i18n="hero.cta1">下载 Windows 绿色包</span>
       </a>
-      <a class="btn btn-ghost" href="#screens">看看界面 <span aria-hidden="true">↓</span></a>
+      <a class="btn btn-ghost" href="#screens"><span data-i18n="hero.cta2">看看界面</span> <span aria-hidden="true">↓</span></a>
     </div>
-    <div class="hero-meta" data-reveal>
-      <span><i class="dot"></i>免装 Python</span>
-      <span><i class="dot"></i>断网可启动</span>
-      <span><i class="dot"></i>当前版本 <b id="versionBadge">2026.11.12.2</b></span>
+    <div class="hero-meta">
+      <span><i class="dot"></i><span data-i18n="hero.m1">免装 Python</span></span>
+      <span><i class="dot"></i><span data-i18n="hero.m2">断网可启动</span></span>
+      <span><i class="dot"></i><span><span data-i18n="hero.m3">当前版本</span> <b id="versionBadge">2026.11.12.2</b></span></span>
     </div>
 
     <!-- 产品界面示意（纯 CSS/SVG，无外部资源） -->
-    <div class="hero-window glass" data-reveal>
+    <div class="hero-window glass">
       <div class="window-stage">
       <div class="window-bar">
         <div class="traffic"><i></i><i></i><i></i></div>
-        <div class="window-title">无限画布 <span>· 项目 / 概念方案 01</span></div>
+        <div class="window-title"><span data-i18n="win.title">无限画布</span> <span>· <span data-i18n="win.sub">项目 / 概念方案 01</span></span></div>
         <div class="window-tabs">
-          <span>自定义工作流</span><span>在线生图</span><span class="on">无限画布</span><span>素材库</span>
+          <span data-i18n="win.tab1">自定义工作流</span><span data-i18n="win.tab2">在线生图</span><span class="on" data-i18n="win.tab3">无限画布</span><span data-i18n="win.tab4">素材库</span>
         </div>
       </div>
       <div class="window-body">
         <div class="mini-side">
           <div class="mini-logo" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M16 3 29 10.5 16 18 3 10.5 16 3Z" stroke="currentColor" stroke-width="1.5"/><path d="M3 16.5 16 24 29 16.5M3 22 16 29.5 29 22" stroke="currentColor" stroke-width="1.5"/></svg></div>
-          <div class="mini-item"><i></i><span>自定义工作流</span></div>
-          <div class="mini-item"><i></i><span>在线生图</span></div>
-          <div class="mini-item active"><i></i><span>无限画布</span></div>
-          <div class="mini-item"><i></i><span>素材库</span></div>
-          <div class="mini-item dim"><i></i><span>API 设置</span></div>
+          <div class="mini-item"><i></i><span data-i18n="mini.1">自定义工作流</span></div>
+          <div class="mini-item"><i></i><span data-i18n="mini.2">在线生图</span></div>
+          <div class="mini-item active"><i></i><span data-i18n="mini.3">无限画布</span></div>
+          <div class="mini-item"><i></i><span data-i18n="mini.4">素材库</span></div>
+          <div class="mini-item dim"><i></i><span data-i18n="mini.api">API 设置</span></div>
         </div>
         <div class="mini-canvas">
           <svg class="wires" viewBox="0 0 900 420" preserveAspectRatio="none" aria-hidden="true">
@@ -91,140 +108,137 @@
             <circle cx="420" cy="210" r="3.5"/><circle cx="570" cy="210" r="3.5"/>
           </svg>
           <div class="node node-a glass-plate">
-            <div class="node-head"><span class="node-tag">输入</span><span class="node-id">01</span></div>
+            <div class="node-head"><span class="node-tag" data-i18n="node1.tag">输入</span><span class="node-id">01</span></div>
             <div class="thumb thumb-a"></div>
-            <div class="node-title">概念总平面</div>
-            <div class="node-sub">参考图 · 3 张</div>
+            <div class="node-title" data-i18n="node1.title">概念总平面</div>
+            <div class="node-sub" data-i18n="node1.sub">参考图 · 3 张</div>
           </div>
           <div class="node node-b glass-plate">
             <div class="node-head"><span class="node-tag">PROMPT</span><span class="node-id">02</span></div>
             <div class="prompt-lines"><i></i><i></i><i></i></div>
-            <div class="node-title">风格迁移与扩展</div>
-            <div class="node-sub">把 IMAGE 0 的光照迁移到 IMAGE 2</div>
+            <div class="node-title" data-i18n="node2.title">风格迁移与扩展</div>
+            <div class="node-sub" data-i18n="node2.sub">把 IMAGE 0 的光照迁移到 IMAGE 2</div>
           </div>
           <div class="node node-c glass-plate">
-            <div class="node-head"><span class="node-tag soft">生成</span><span class="node-id">03</span></div>
+            <div class="node-head"><span class="node-tag soft" data-i18n="node3.tag">生成</span><span class="node-id">03</span></div>
             <div class="thumb-grid"><i class="thumb-b"></i><i class="thumb-c"></i><i class="thumb-d"></i><i class="thumb-a"></i></div>
-            <div class="node-title">九宫格多视角</div>
-            <div class="node-sub">4 张结果 · 已沉淀</div>
+            <div class="node-title" data-i18n="node3.title">九宫格多视角</div>
+            <div class="node-sub" data-i18n="node3.sub">4 张结果 · 已沉淀</div>
           </div>
           <div class="node node-d glass-plate">
-            <div class="node-head"><span class="node-tag">输出</span><span class="node-id">04</span></div>
+            <div class="node-head"><span class="node-tag" data-i18n="node4.tag">输出</span><span class="node-id">04</span></div>
             <div class="thumb thumb-c"></div>
-            <div class="node-title">鸟瞰效果图</div>
-            <div class="node-sub">已归入素材库 / 方案 A</div>
+            <div class="node-title" data-i18n="node4.title">鸟瞰效果图</div>
+            <div class="node-sub" data-i18n="node4.sub">已归入素材库 / 方案 A</div>
           </div>
           <div class="node node-e glass-plate">
-            <div class="node-head"><span class="node-tag">归档</span><span class="node-id">05</span></div>
+            <div class="node-head"><span class="node-tag" data-i18n="node5.tag">归档</span><span class="node-id">05</span></div>
             <div class="thumb thumb-d"></div>
-            <div class="node-title">素材分组</div>
-            <div class="node-sub">可推送到在线平台</div>
+            <div class="node-title" data-i18n="node5.title">素材分组</div>
+            <div class="node-sub" data-i18n="node5.sub">可推送到在线平台</div>
           </div>
           <div class="minimap glass-plate" aria-hidden="true"><i></i><i></i><i></i><i></i><span></span></div>
-          <div class="canvas-cta" aria-hidden="true"><i></i>生成</div>
+          <div class="canvas-cta" aria-hidden="true"><i></i><span data-i18n="win.render">生成</span></div>
         </div>
       </div>
       </div>
     </div>
   </section>
 
-  <!-- INTERACTIVE PARTICLE BAND -->
-  <section class="particle-band" id="motion" aria-label="交互式粒子展示">
-    <canvas id="particleCanvas" aria-hidden="true"></canvas>
+  <!-- 墨迹展示带 -->
+  <section class="particle-band" id="motion" aria-label="交互式墨迹展示" data-i18n-aria="motion.aria">
+    <canvas id="inkCanvas" aria-hidden="true"></canvas>
     <div class="particle-vignette" aria-hidden="true"></div>
-    <div class="particle-nodes" aria-hidden="true">
-      <span class="pnode" data-node="0"><i>01</i>参考图</span>
-      <span class="pnode" data-node="1"><i>02</i>提示词</span>
-      <span class="pnode" data-node="2"><i>03</i>生成结果</span>
-    </div>
     <div class="particle-inner wrap">
-      <div class="eyebrow particle-eyebrow" data-reveal><span class="eyebrow-line"></span>IDEAS, IN MOTION<span class="eyebrow-line"></span></div>
-      <h2 class="particle-title" data-reveal>一切都能<span class="gradient-text reconnect-trigger" id="reconnectTrigger" role="button" tabindex="0" aria-label="点击，让粒子重新连接" title="点击，让粒子重新连接">重新连接</span></h2>
-      <p class="particle-lead" data-reveal><button class="kw" type="button" data-node="0" aria-pressed="false">参考图</button>、<button class="kw" type="button" data-node="1" aria-pressed="false">提示词</button>、<button class="kw" type="button" data-node="2" aria-pressed="false">生成结果</button>，在同一张画布上自由摆放、连线与重组。不必按顺序，也不必只做一次。</p>
-      <div class="particle-controls" data-reveal>
-        <div class="particle-hint"><span class="hint-dot"></span><span id="motionStatus">移动鼠标，扰动这些粒子</span></div>
-        <button class="motion-replay" type="button" id="replayMotion">重新连接 <span aria-hidden="true">↗</span></button>
+      <div class="eyebrow particle-eyebrow"><span class="eyebrow-line"></span><span data-i18n="motion.eyebrow">IDEAS, IN MOTION</span><span class="eyebrow-line"></span></div>
+      <h2 class="particle-title"><span data-i18n="motion.title1">一切都能</span><span class="gradient-text reconnect-trigger" id="reconnectTrigger" role="button" tabindex="0" aria-label="让墨迹重新聚拢" data-i18n-aria="motion.trigger"><span data-i18n="motion.titleHL">重新连接</span></span></h2>
+      <p class="particle-lead">
+        <button class="kw" type="button" data-node="0"><span data-i18n="motion.kw1">参考图</span></button><span data-i18n="motion.lead1">、</span><button class="kw" type="button" data-node="1"><span data-i18n="motion.kw2">提示词</span></button><span data-i18n="motion.lead2">、</span><button class="kw" type="button" data-node="2"><span data-i18n="motion.kw3">生成结果</span></button><span data-i18n="motion.lead3">，在同一张画布上自由摆放、连线与重组。不必按顺序，也不必只做一次。</span>
+      </p>
+      <div class="particle-controls">
+        <div class="particle-hint"><span class="hint-dot"></span><span id="motionStatus">移动鼠标，搅动这池墨</span></div>
+        <button class="motion-replay" type="button" id="replayMotion"><span data-i18n="motion.replayText">再搅一次</span> <span aria-hidden="true">↗</span></button>
       </div>
-      <p class="particle-tip" data-reveal>把鼠标移到上面三个词上，看它们重新连成一张画布</p>
+      <p class="particle-tip" data-i18n="motion.tip">把鼠标移进来，墨迹会跟着你走</p>
     </div>
   </section>
 
   <!-- WHY LOCAL -->
   <section class="section wrap" id="why">
-    <div class="eyebrow" data-reveal><span class="eyebrow-line"></span>LOCAL BY DESIGN<span class="eyebrow-line"></span></div>
-    <h2 class="section-title" data-reveal>数据留在本机，<br>创作不被打断</h2>
-    <p class="section-lead" data-reveal>没有账号、没有云端工作区、没有按次计费。API Key 只写进本机配置，素材、历史与画布都落在你自己的文件夹里。</p>
+    <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="why.eyebrow">LOCAL BY DESIGN</span><span class="eyebrow-line"></span></div>
+    <h2 class="section-title"><span data-i18n="why.title1">数据留在本机，</span><br><span data-i18n="why.title2">创作不被打断</span></h2>
+    <p class="section-lead" data-i18n="why.lead">没有账号、没有云端工作区、没有按次计费。API Key 只写进本机配置，素材、历史与画布都落在你自己的文件夹里。</p>
 
-    <div class="stat-grid" data-reveal>
-      <div class="stat glass"><div class="stat-num">0<span>次</span></div><div class="stat-label">安装配置</div><p>解压后双击 start.bat，不用装 Python、不用配环境。</p></div>
-      <div class="stat glass"><div class="stat-num">4<span>个</span></div><div class="stat-label">模块，一条链路</div><p>模板、生成、连线、归档共用同一套侧栏。</p></div>
-      <div class="stat glass"><div class="stat-num">1–9<span>张</span></div><div class="stat-label">参考图自定义</div><p>每张带 IMAGE 编号，写 Prompt 时直接指代。</p></div>
-      <div class="stat glass"><div class="stat-num">100<span>%</span></div><div class="stat-label">数据在本地</div><p>素材、生成历史与 Key 都不离开这台电脑。</p></div>
+    <div class="stat-grid">
+      <div class="stat glass"><div class="stat-num">0<span data-i18n="why.s1u">次</span></div><div class="stat-label" data-i18n="why.s1l">安装配置</div><p data-i18n="why.s1p">解压后双击 start.bat，不用装 Python、不用配环境。</p></div>
+      <div class="stat glass"><div class="stat-num">4<span data-i18n="why.s2u">个</span></div><div class="stat-label" data-i18n="why.s2l">模块，一条链路</div><p data-i18n="why.s2p">模板、生成、连线、归档共用同一套侧栏。</p></div>
+      <div class="stat glass"><div class="stat-num">1–9<span data-i18n="why.s3u">张</span></div><div class="stat-label" data-i18n="why.s3l">参考图自定义</div><p data-i18n="why.s3p">每张带 IMAGE 编号，写 Prompt 时直接指代。</p></div>
+      <div class="stat glass"><div class="stat-num">100<span data-i18n="why.s4u">%</span></div><div class="stat-label" data-i18n="why.s4l">数据在本地</div><p data-i18n="why.s4p">素材、生成历史与 Key 都不离开这台电脑。</p></div>
     </div>
 
-    <div class="compare glass" data-reveal>
-      <div class="compare-head"><span>同一件事</span><span>常见在线工具</span><span>无限画布</span></div>
-      <div class="compare-row"><span>开始之前</span><span>注册账号 · 登录 · 订阅</span><span class="good">解压 → 双击</span></div>
-      <div class="compare-row"><span>素材存在哪</span><span>平台云端空间</span><span class="good">本机文件夹</span></div>
-      <div class="compare-row"><span>版本升级</span><span>强制更新，无法回退</span><span class="good">一键更新，自动备份可回滚</span></div>
-      <div class="compare-row"><span>断网时</span><span>无法工作</span><span class="good">照常启动与整理</span></div>
+    <div class="compare glass">
+      <div class="compare-head"><span data-i18n="cmp.head1">同一件事</span><span data-i18n="cmp.head2">常见在线工具</span><span data-i18n="cmp.head3">无限画布</span></div>
+      <div class="compare-row"><span data-i18n="cmp.r1a">开始之前</span><span data-i18n="cmp.r1b">注册账号 · 登录 · 订阅</span><span class="good" data-i18n="cmp.r1c">解压 → 双击</span></div>
+      <div class="compare-row"><span data-i18n="cmp.r2a">素材存在哪</span><span data-i18n="cmp.r2b">平台云端空间</span><span class="good" data-i18n="cmp.r2c">本机文件夹</span></div>
+      <div class="compare-row"><span data-i18n="cmp.r3a">版本升级</span><span data-i18n="cmp.r3b">强制更新，无法回退</span><span class="good" data-i18n="cmp.r3c">一键更新，自动备份可回滚</span></div>
+      <div class="compare-row"><span data-i18n="cmp.r4a">断网时</span><span data-i18n="cmp.r4b">无法工作</span><span class="good" data-i18n="cmp.r4c">照常启动与整理</span></div>
     </div>
   </section>
 
   <!-- FEATURES -->
   <section class="section wrap" id="features">
-    <div class="eyebrow" data-reveal><span class="eyebrow-line"></span>ONE CONTINUOUS FLOW<span class="eyebrow-line"></span></div>
-    <h2 class="section-title" data-reveal>四个模块，一条完整的创作链路</h2>
-    <p class="section-lead" data-reveal>从模板到参考图，从节点连线到素材归档，每一步都留在同一套界面里。侧栏一次点击就切换，上下文不会丢。</p>
+    <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="feat.eyebrow">ONE CONTINUOUS FLOW</span><span class="eyebrow-line"></span></div>
+    <h2 class="section-title" data-i18n="feat.title">四个模块，一条完整的创作链路</h2>
+    <p class="section-lead" data-i18n="feat.lead">从模板到参考图，从节点连线到素材归档，每一步都留在同一套界面里。侧栏一次点击就切换，上下文不会丢。</p>
 
     <div class="feature-grid">
-      <article class="feature glass" data-reveal>
+      <article class="feature glass">
         <div class="feature-top"><span class="feature-no">01</span><span class="feature-icon" aria-hidden="true">◇</span></div>
-        <h3>自定义工作流</h3>
-        <p>四个内置模板都能改：标题、说明、画幅、节点名称与提示词。支持关键词批量替换、新建、另存与还原默认。</p>
-        <div class="chip-row"><span class="chip">模板可编辑</span><span class="chip">关键词替换</span></div>
+        <h3 data-i18n="f1.t">自定义工作流</h3>
+        <p data-i18n="f1.p">四个内置模板都能改：标题、说明、画幅、节点名称与提示词。支持关键词批量替换、新建、另存与还原默认。</p>
+        <div class="chip-row"><span class="chip" data-i18n="f1.c1">模板可编辑</span><span class="chip" data-i18n="f1.c2">关键词替换</span></div>
       </article>
-      <article class="feature glass" data-reveal>
+      <article class="feature glass">
         <div class="feature-top"><span class="feature-no">02</span><span class="feature-icon" aria-hidden="true">▣</span></div>
-        <h3>在线生图</h3>
-        <p>直连云端 API 生成。参考图支持 1–9 张自定义，每张带固定 IMAGE 编号，点编号即可插入提示词，写 Prompt 时直接指代对应图片。</p>
-        <div class="chip-row"><span class="chip">IMAGE 0–8</span><span class="chip">多参考图</span></div>
+        <h3 data-i18n="f2.t">在线生图</h3>
+        <p data-i18n="f2.p">直连云端 API 生成。参考图支持 1–9 张自定义，每张带固定 IMAGE 编号，点编号即可插入提示词，写 Prompt 时直接指代对应图片。</p>
+        <div class="chip-row"><span class="chip">IMAGE 0–8</span><span class="chip" data-i18n="f2.c2">多参考图</span></div>
       </article>
-      <article class="feature glass" data-reveal>
+      <article class="feature glass">
         <div class="feature-top"><span class="feature-no">03</span><span class="feature-icon" aria-hidden="true">⌘</span></div>
-        <h3>无限画布</h3>
-        <p>节点自由摆放、连线组合。文生图、图生图、局部重绘、扩展出图、九宫格多视角都在同一张画布上完成。</p>
-        <div class="chip-row"><span class="chip">节点连线</span><span class="chip">五种生成</span></div>
+        <h3 data-i18n="f3.t">无限画布</h3>
+        <p data-i18n="f3.p">节点自由摆放、连线组合。文生图、图生图、局部重绘、扩展出图、九宫格多视角都在同一张画布上完成。</p>
+        <div class="chip-row"><span class="chip" data-i18n="f3.c1">节点连线</span><span class="chip" data-i18n="f3.c2">五种生成</span></div>
       </article>
-      <article class="feature glass" data-reveal>
+      <article class="feature glass">
         <div class="feature-top"><span class="feature-no">04</span><span class="feature-icon" aria-hidden="true">▤</span></div>
-        <h3>素材库</h3>
-        <p>本地分组、批量整理、智能分类，也能推送到在线平台。配套 Chrome 批量采集插件与 Photoshop 直连面板。</p>
-        <div class="chip-row"><span class="chip">本地归档</span><span class="chip">插件联动</span></div>
+        <h3 data-i18n="f4.t">素材库</h3>
+        <p data-i18n="f4.p">本地分组、批量整理、智能分类，也能推送到在线平台。配套 Chrome 批量采集插件与 Photoshop 直连面板。</p>
+        <div class="chip-row"><span class="chip" data-i18n="f4.c1">本地归档</span><span class="chip" data-i18n="f4.c2">插件联动</span></div>
       </article>
     </div>
 
-    <div class="protocol glass" data-reveal>
-      <span class="protocol-label">已接入</span>
+    <div class="protocol glass">
+      <span class="protocol-label" data-i18n="proto.label">已接入</span>
       <div class="protocol-list">
-        <span>OpenAI 协议</span><span>异步协议</span><span>Gemini 协议</span><span>方钩协议</span>
-        <span>ModelScope 免费模型</span><span>火山引擎</span><span>即梦</span>
+        <span data-i18n="proto.1">OpenAI 协议</span><span data-i18n="proto.2">异步协议</span><span data-i18n="proto.3">Gemini 协议</span><span data-i18n="proto.4">方钩协议</span>
+        <span data-i18n="proto.5">ModelScope 免费模型</span><span data-i18n="proto.6">火山引擎</span><span data-i18n="proto.7">即梦</span>
       </div>
     </div>
   </section>
 
   <!-- SCREENS -->
   <section class="section wrap" id="screens">
-    <div class="eyebrow" data-reveal><span class="eyebrow-line"></span>EVERY MODULE, ONE CANVAS<span class="eyebrow-line"></span></div>
-    <h2 class="section-title" data-reveal>界面长什么样</h2>
-    <p class="section-lead" data-reveal>四个模块共用同一套侧栏，浅色与暗色主题都已适配，平板与手机浏览器也能打开。</p>
+    <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="scr.eyebrow">EVERY MODULE, ONE CANVAS</span><span class="eyebrow-line"></span></div>
+    <h2 class="section-title" data-i18n="scr.title">界面长什么样</h2>
+    <p class="section-lead" data-i18n="scr.lead">四个模块共用同一套侧栏，浅色与暗色主题都已适配，平板与手机浏览器也能打开。</p>
 
-    <div class="screens glass" data-reveal>
-      <div class="screen-tabs" role="tablist" aria-label="界面预览">
-        <button class="screen-tab active" role="tab" aria-selected="true" data-target="shot-1">自定义工作流</button>
-        <button class="screen-tab" role="tab" aria-selected="false" data-target="shot-2">在线生图</button>
-        <button class="screen-tab" role="tab" aria-selected="false" data-target="shot-3">无限画布</button>
-        <button class="screen-tab" role="tab" aria-selected="false" data-target="shot-4">素材库</button>
+    <div class="screens glass">
+      <div class="screen-tabs" role="tablist" aria-label="界面预览" data-i18n-aria="scr.aria">
+        <button class="screen-tab active" role="tab" aria-selected="true" data-target="shot-1" data-i18n="scr.tab1">自定义工作流</button>
+        <button class="screen-tab" role="tab" aria-selected="false" data-target="shot-2" data-i18n="scr.tab2">在线生图</button>
+        <button class="screen-tab" role="tab" aria-selected="false" data-target="shot-3" data-i18n="scr.tab3">无限画布</button>
+        <button class="screen-tab" role="tab" aria-selected="false" data-target="shot-4" data-i18n="scr.tab4">素材库</button>
       </div>
       <div class="screen-stage">
         <figure class="screen-shot active" id="shot-1"><img src="assets/screenshots/custom-workflow.png" alt="自定义工作流界面：四个可编辑模板与提示词配置" loading="lazy"></figure>
@@ -236,78 +250,91 @@
     </div>
   </section>
 
+  <!-- 画布远景 -->
+  <section class="section wrap" id="closeup">
+    <div class="closeup-grid">
+      <figure class="closeup glass">
+        <img src="assets/screenshots/canvas-material-grid.jpg" alt="画布远景：上百张素材卡片并排，靠连线圈成同一套方案" loading="lazy" width="1200" height="750">
+        <figcaption><span class="closeup-tag">A</span><span data-i18n="cu.c1">画布远景 · 素材矩阵：上百张参考图并排放着，靠连线圈出同一套方案。</span></figcaption>
+      </figure>
+      <figure class="closeup glass">
+        <img src="assets/screenshots/canvas-mixed-flow.jpg" alt="画布远景：夜间效果图、彩平与鸟瞰在同一张布上延续" loading="lazy" width="1200" height="750">
+        <figcaption><span class="closeup-tag">B</span><span data-i18n="cu.c2">画布远景 · 多轮混排：夜景、彩平、鸟瞰与细节图在同一张布上继续生长。</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
   <!-- OPEN -->
   <section class="section wrap" id="opensource">
-    <div class="eyebrow" data-reveal><span class="eyebrow-line"></span>OPEN &amp; ACCOUNTABLE<span class="eyebrow-line"></span></div>
-    <h2 class="section-title" data-reveal>开源、可自查、可回滚</h2>
-    <p class="section-lead" data-reveal>代码在 GitHub 上，行为可以自己看；更新之前会自动备份，任何时候都能退回上一版。</p>
+    <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="open.eyebrow">OPEN &amp; ACCOUNTABLE</span><span class="eyebrow-line"></span></div>
+    <h2 class="section-title" data-i18n="open.title">开源、可自查、可回滚</h2>
+    <p class="section-lead" data-i18n="open.lead">代码在 GitHub 上，行为可以自己看；更新之前会自动备份，任何时候都能退回上一版。</p>
     <div class="open-grid">
-      <div class="open-card glass" data-reveal><span class="open-no">01</span><h3>保持开源，注明来源</h3><p>基于 wuli大雄 的开源项目 Infinite-Canvas 二次开发，沿用上游开源约定，不封装成闭源商用产品。</p></div>
-      <div class="open-card glass" data-reveal><span class="open-no">02</span><h3>Key 只留在本机</h3><p>API Key 写入后端 env，页面不回显。只有你主动调用云端模型时，才会与你配置的 API 地址通信。</p></div>
-      <div class="open-card glass" data-reveal><span class="open-no">03</span><h3>更新自动备份</h3><p>一键更新前自动备份、可回滚，完成后自动重启；不想收到更新提示，删掉根目录 VERSION 即可。</p></div>
+      <div class="open-card glass"><span class="open-no">01</span><h3 data-i18n="o1.t">保持开源，注明来源</h3><p data-i18n="o1.p">基于 wuli大雄 的开源项目 Infinite-Canvas 二次开发，沿用上游开源约定，不封装成闭源商用产品。</p></div>
+      <div class="open-card glass"><span class="open-no">02</span><h3 data-i18n="o2.t">Key 只留在本机</h3><p data-i18n="o2.p">API Key 写入后端 env，页面不回显。只有你主动调用云端模型时，才会与你配置的 API 地址通信。</p></div>
+      <div class="open-card glass"><span class="open-no">03</span><h3 data-i18n="o3.t">更新自动备份</h3><p data-i18n="o3.p">一键更新前自动备份、可回滚，完成后自动重启；不想收到更新提示，删掉根目录 VERSION 即可。</p></div>
     </div>
-    <a class="credit glass" href="https://github.com/hero8152/Infinite-Canvas" target="_blank" rel="noopener" data-reveal>
-      <span class="credit-label">上游项目</span>
-      <span class="credit-main">Infinite-Canvas · 原作者 wuli大雄</span>
-      <span class="credit-note">上游已于 2026/08/28 停更，与本项目无隶属关系</span>
+    <a class="credit glass" href="https://github.com/hero8152/Infinite-Canvas" target="_blank" rel="noopener">
+      <span class="credit-label" data-i18n="credit.label">上游项目</span>
+      <span class="credit-main" data-i18n="credit.main">Infinite-Canvas · 原作者 wuli大雄</span>
+      <span class="credit-note" data-i18n="credit.note">上游已于 2026/08/28 停更，与本项目无隶属关系</span>
       <span class="credit-arrow" aria-hidden="true">↗</span>
     </a>
   </section>
 
   <!-- DOWNLOAD -->
   <section class="section wrap" id="download">
-    <div class="eyebrow" data-reveal><span class="eyebrow-line"></span>READY WHEN YOU ARE<span class="eyebrow-line"></span></div>
-    <h2 class="section-title" data-reveal>一分钟开始创作</h2>
-    <p class="section-lead" data-reveal>新用户直接下载绿色包，不用克隆仓库、不用安装 Python。</p>
+    <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="dl.eyebrow">READY WHEN YOU ARE</span><span class="eyebrow-line"></span></div>
+    <h2 class="section-title" data-i18n="dl.title">一分钟开始创作</h2>
+    <p class="section-lead" data-i18n="dl.lead">新用户直接下载绿色包，不用克隆仓库、不用安装 Python。</p>
 
-    <div class="download-main glass" data-reveal>
+    <div class="download-main glass">
       <div class="download-main-left">
-        <span class="badge">推荐 · WINDOWS</span>
-        <h3>免安装绿色包</h3>
-        <p>内置便携 Python 与全部离线依赖，约 50 MB。解压后请勿删除 <code>python/</code> 与 <code>packages/</code> 目录。</p>
-        <div class="download-steps"><span><b>1</b> 解压到任意目录</span><span><b>2</b> 双击 start.bat</span><span><b>3</b> 在 API 设置填入 Key</span></div>
+        <span class="badge" data-i18n="dl.badge">推荐 · WINDOWS</span>
+        <h3 data-i18n="dl.h3">免安装绿色包</h3>
+        <p data-i18n-html="dl.p">内置便携 Python 与全部离线依赖，约 50 MB。解压后请勿删除 <code>python/</code> 与 <code>packages/</code> 目录。</p>
+        <div class="download-steps"><span><b>1</b> <span data-i18n="dl.step1">解压到任意目录</span></span><span><b>2</b> <span data-i18n="dl.step2">双击 start.bat</span></span><span><b>3</b> <span data-i18n="dl.step3">在 API 设置填入 Key</span></span></div>
       </div>
       <div class="download-main-right">
         <a class="btn btn-primary btn-lg" href="https://github.com/Iorlchoate/Infinite-Canvas-UDG/releases/latest" target="_blank" rel="noopener">
           <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 3v10m0 0 4-4m-4 4-4-4M4 16h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          下载 v<span id="versionBadge2">2026.11.12.2</span>
+          <span><span data-i18n="dl.cta">下载</span> v<b id="versionBadge2">2026.11.12.2</b></span>
         </a>
-        <a class="btn btn-ghost btn-block" href="https://github.com/Iorlchoate/Infinite-Canvas-UDG/releases" target="_blank" rel="noopener">查看全部版本</a>
-        <span class="download-hint">端口被占用会自动顺延，控制台会显示实际地址</span>
+        <a class="btn btn-ghost btn-block" href="https://github.com/Iorlchoate/Infinite-Canvas-UDG/releases" target="_blank" rel="noopener" data-i18n="dl.ghost">查看全部版本</a>
+        <span class="download-hint" data-i18n="dl.hint">端口被占用会自动顺延，控制台会显示实际地址</span>
       </div>
     </div>
 
     <div class="download-grid">
-      <div class="download-card glass" data-reveal><h3>源码运行</h3><p>克隆仓库后，Windows 用 <code>start.bat</code>，macOS / Linux 用 <code>python3 main.py</code>。</p><a href="https://github.com/Iorlchoate/Infinite-Canvas-UDG" target="_blank" rel="noopener">查看仓库 <span aria-hidden="true">↗</span></a></div>
-      <div class="download-card glass" data-reveal><h3>macOS / Linux</h3><p>安装依赖后运行 <code>python3 main.py</code>，或使用 <code>mac-启动服务.sh</code>；首次运行可先修复权限。</p><a href="https://github.com/Iorlchoate/Infinite-Canvas-UDG#快速开始" target="_blank" rel="noopener">使用说明 <span aria-hidden="true">↗</span></a></div>
-      <div class="download-card glass" data-reveal><h3>手机 / 平板</h3><p>同一 Wi-Fi 下用浏览器打开控制台打印的局域网地址，支持单指拖动、双指缩放，可「添加到主屏幕」。</p><a href="https://github.com/Iorlchoate/Infinite-Canvas-UDG#手机--平板访问" target="_blank" rel="noopener">访问说明 <span aria-hidden="true">↗</span></a></div>
+      <div class="download-card glass"><h3 data-i18n="c1.t">源码运行</h3><p data-i18n-html="c1.p">克隆仓库后，Windows 用 <code>start.bat</code>，macOS / Linux 用 <code>python3 main.py</code>。</p><a href="https://github.com/Iorlchoate/Infinite-Canvas-UDG" target="_blank" rel="noopener"><span data-i18n="c1.a">查看仓库</span> <span aria-hidden="true">↗</span></a></div>
+      <div class="download-card glass"><h3 data-i18n="c2.t">macOS / Linux</h3><p data-i18n-html="c2.p">安装依赖后运行 <code>python3 main.py</code>，或使用 <code>mac-启动服务.sh</code>；首次运行可先修复权限。</p><a href="https://github.com/Iorlchoate/Infinite-Canvas-UDG#快速开始" target="_blank" rel="noopener"><span data-i18n="c2.a">使用说明</span> <span aria-hidden="true">↗</span></a></div>
+      <div class="download-card glass"><h3 data-i18n="c3.t">手机 / 平板</h3><p data-i18n="c3.p">同一 Wi-Fi 下用浏览器打开控制台打印的局域网地址，支持单指拖动、双指缩放，可「添加到主屏幕」。</p><a href="https://github.com/Iorlchoate/Infinite-Canvas-UDG#手机--平板访问" target="_blank" rel="noopener"><span data-i18n="c3.a">访问说明</span> <span aria-hidden="true">↗</span></a></div>
     </div>
-    <p class="fine-print" data-reveal>手机与平板访问依赖这台电脑保持开机；数据与 API Key 都存在电脑上，跨网络访问请自行评估安全风险。</p>
+    <p class="fine-print" data-i18n="dl.fine">手机与平板访问依赖这台电脑保持开机；数据与 API Key 都存在电脑上，跨网络访问请自行评估安全风险。</p>
   </section>
 
   <!-- FAQ -->
   <section class="section wrap" id="faq">
-    <div class="eyebrow" data-reveal><span class="eyebrow-line"></span>QUESTIONS PEOPLE ASK<span class="eyebrow-line"></span></div>
-    <h2 class="section-title" data-reveal>常见问题</h2>
-    <div class="faq-list" data-reveal>
-      <details class="faq glass"><summary>免费吗？可以商用吗？<span aria-hidden="true">+</span></summary><p>项目免费，保持开源并注明来源。上游 Infinite-Canvas 已申请著作权，其开源约定（二次开发须保持开源并注明来源作者、禁止擅自商用封装）对上游代码继续适用，请勿擅自封装商用。</p></details>
-      <details class="faq glass"><summary>我的图片和 API Key 会被上传吗？<span aria-hidden="true">+</span></summary><p>不会存到任何服务端。素材、生成历史与 Key 都在本机；只有你主动调用云端模型时，才会与你配置的 API 地址通信。</p></details>
-      <details class="faq glass"><summary>需要装 Python 或者联网吗？<span aria-hidden="true">+</span></summary><p>不需要。绿色包内置便携 Python 与全部离线依赖，断网也能启动；3000 端口被占用时会自动顺延到 3001、3002……</p></details>
-      <details class="faq glass"><summary>支持哪些模型和平台？<span aria-hidden="true">+</span></summary><p>几乎所有 OpenAI 协议 API、异步协议、Gemini 协议、方钩协议，以及 ModelScope 免费 LLM 与图像模型、火山引擎、即梦等。在「API 设置」里统一管理地址、模型列表与 Key。</p></details>
-      <details class="faq glass"><summary>iPad 和安卓能用吗？<span aria-hidden="true">+</span></summary><p>同一 Wi-Fi 下用浏览器访问电脑的局域网地址即可，内置 Web App 清单可全屏运行；触屏支持单指拖动、双指缩放。电脑关机后无法访问，完全离线的原生 App 暂不支持。</p></details>
-      <details class="faq glass"><summary>怎么更新？出问题找谁？<span aria-hidden="true">+</span></summary><p>在界面点「一键更新」，程序自动备份后覆盖并重启，也可回滚；「测试连通性」可排查网络。问题请到 GitHub Issues 反馈，提交前先看看是否已有相同问题。</p></details>
+    <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="faq.eyebrow">QUESTIONS PEOPLE ASK</span><span class="eyebrow-line"></span></div>
+    <h2 class="section-title" data-i18n="faq.title">常见问题</h2>
+    <div class="faq-list">
+      <details class="faq glass"><summary><span data-i18n="faq.q1">免费吗？可以商用吗？</span><span class="faq-mark" aria-hidden="true">+</span></summary><p data-i18n="faq.a1">项目免费，保持开源并注明来源。上游 Infinite-Canvas 已申请著作权，其开源约定（二次开发须保持开源并注明来源作者、禁止擅自商用封装）对上游代码继续适用，请勿擅自封装商用。</p></details>
+      <details class="faq glass"><summary><span data-i18n="faq.q2">我的图片和 API Key 会被上传吗？</span><span class="faq-mark" aria-hidden="true">+</span></summary><p data-i18n="faq.a2">不会存到任何服务端。素材、生成历史与 Key 都在本机；只有你主动调用云端模型时，才会与你配置的 API 地址通信。</p></details>
+      <details class="faq glass"><summary><span data-i18n="faq.q3">需要装 Python 或者联网吗？</span><span class="faq-mark" aria-hidden="true">+</span></summary><p data-i18n="faq.a3">不需要。绿色包内置便携 Python 与全部离线依赖，断网也能启动；3000 端口被占用时会自动顺延到 3001、3002……</p></details>
+      <details class="faq glass"><summary><span data-i18n="faq.q4">支持哪些模型和平台？</span><span class="faq-mark" aria-hidden="true">+</span></summary><p data-i18n="faq.a4">几乎所有 OpenAI 协议 API、异步协议、Gemini 协议、方钩协议，以及 ModelScope 免费 LLM 与图像模型、火山引擎、即梦等。在「API 设置」里统一管理地址、模型列表与 Key。</p></details>
+      <details class="faq glass"><summary><span data-i18n="faq.q5">iPad 和安卓能用吗？</span><span class="faq-mark" aria-hidden="true">+</span></summary><p data-i18n="faq.a5">同一 Wi-Fi 下用浏览器访问电脑的局域网地址即可，内置 Web App 清单可全屏运行；触屏支持单指拖动、双指缩放。电脑关机后无法访问，完全离线的原生 App 暂不支持。</p></details>
+      <details class="faq glass"><summary><span data-i18n="faq.q6">怎么更新？出问题找谁？</span><span class="faq-mark" aria-hidden="true">+</span></summary><p data-i18n="faq.a6">在界面点「一键更新」，程序自动备份后覆盖并重启，也可回滚；「测试连通性」可排查网络。问题请到 GitHub Issues 反馈，提交前先看看是否已有相同问题。</p></details>
     </div>
   </section>
 
   <!-- FINAL CTA -->
-  <section class="final wrap" data-reveal>
-    <div class="final-glow" aria-hidden="true"></div>
-    <div class="eyebrow"><span class="eyebrow-line"></span>START CREATING<span class="eyebrow-line"></span></div>
-    <h2 class="final-title gradient-text">现在就把画布打开</h2>
-    <p>一次下载，之后都在这张画布上完成。</p>
+  <section class="final wrap">
+    <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="fin.eyebrow">START CREATING</span><span class="eyebrow-line"></span></div>
+    <h2 class="final-title gradient-text" data-i18n="fin.title">现在就把画布打开</h2>
+    <p data-i18n="fin.sub">一次下载，之后都在这张画布上完成。</p>
     <div class="final-actions">
-      <a class="btn btn-primary btn-lg" href="https://github.com/Iorlchoate/Infinite-Canvas-UDG/releases/latest" target="_blank" rel="noopener">下载 Windows 绿色包</a>
-      <a class="btn btn-ghost" href="https://github.com/Iorlchoate/Infinite-Canvas-UDG" target="_blank" rel="noopener">在 GitHub 上看源码 <span aria-hidden="true">↗</span></a>
+      <a class="btn btn-primary btn-lg" href="https://github.com/Iorlchoate/Infinite-Canvas-UDG/releases/latest" target="_blank" rel="noopener" data-i18n="fin.b1">下载 Windows 绿色包</a>
+      <a class="btn btn-ghost" href="https://github.com/Iorlchoate/Infinite-Canvas-UDG" target="_blank" rel="noopener"><span data-i18n="fin.b2">在 GitHub 上看源码</span> <span aria-hidden="true">↗</span></a>
     </div>
   </section>
 </main>
@@ -316,19 +343,19 @@
   <div class="wrap footer-inner">
     <div class="footer-brand">
       <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path class="logo-accent" d="M16 3 29 10.5 16 18 3 10.5 16 3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M3 16.5 16 24 29 16.5M3 22 16 29.5 29 22" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span>
-      <div><strong>无限画布</strong><span>Infinite Canvas · 本地运行的 AI 创作画布</span></div>
+      <div><strong data-i18n="ft.brand">无限画布</strong><span data-i18n="ft.tag">Infinite Canvas · 本地运行的 AI 创作画布</span></div>
     </div>
-    <nav class="footer-links" aria-label="页脚导航">
-      <a href="https://github.com/Iorlchoate/Infinite-Canvas-UDG/releases/latest" target="_blank" rel="noopener">下载</a>
-      <a href="https://github.com/Iorlchoate/Infinite-Canvas-UDG#readme" target="_blank" rel="noopener">使用说明</a>
-      <a href="https://github.com/Iorlchoate/Infinite-Canvas-UDG/releases" target="_blank" rel="noopener">更新日志</a>
-      <a href="https://github.com/Iorlchoate/Infinite-Canvas-UDG/issues" target="_blank" rel="noopener">报告问题</a>
-      <a href="https://github.com/hero8152/Infinite-Canvas" target="_blank" rel="noopener">上游项目</a>
+    <nav class="footer-links" aria-label="页脚导航" data-i18n-aria="ft.aria">
+      <a href="https://github.com/Iorlchoate/Infinite-Canvas-UDG/releases/latest" target="_blank" rel="noopener" data-i18n="ft.dl">下载</a>
+      <a href="https://github.com/Iorlchoate/Infinite-Canvas-UDG#readme" target="_blank" rel="noopener" data-i18n="ft.docs">使用说明</a>
+      <a href="https://github.com/Iorlchoate/Infinite-Canvas-UDG/releases" target="_blank" rel="noopener" data-i18n="ft.log">更新日志</a>
+      <a href="https://github.com/Iorlchoate/Infinite-Canvas-UDG/issues" target="_blank" rel="noopener" data-i18n="ft.issue">报告问题</a>
+      <a href="https://github.com/hero8152/Infinite-Canvas" target="_blank" rel="noopener" data-i18n="ft.up">上游项目</a>
     </nav>
   </div>
   <div class="wrap footer-bottom">
-    <span>基于 <a href="https://github.com/hero8152/Infinite-Canvas" target="_blank" rel="noopener">Infinite-Canvas</a>（原作者 wuli大雄）二次开发，保持开源并注明来源。</span>
-    <span>© 2026 无限画布 · Infinite Canvas</span>
+    <span data-i18n-html="ft.bottom">基于 <a href="https://github.com/hero8152/Infinite-Canvas" target="_blank" rel="noopener">Infinite-Canvas</a>（原作者 wuli大雄）二次开发，保持开源并注明来源。</span>
+    <span data-i18n="ft.copy">© 2026 无限画布 · Infinite Canvas</span>
   </div>
 </footer>
 
