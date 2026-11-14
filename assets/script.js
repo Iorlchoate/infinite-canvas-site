@@ -434,11 +434,13 @@
   })();
 
   /* =====================================================================
-     3. 首页柔光光晕 —— 全站唯一的鼠标跟随动效
-     参考 wu.dstrml.org 的大面积弥散辉光：只画柔和的径向光团，
-     不画任何线条 / 网格 / 准星 / 粒子。色彩沿用 LOGO 同源的
-     石墨灰 + 正红，暖白只做高光，不引入第三种彩色。
-     低分辨率离屏画布绘制后放大，天然带一层柔化，性能也更省。
+     首页鼠标动效：连续面光（Continuous Luminous Field）
+     参考 wu.dstrml.org 的「一大团均匀弥散的柔光」。这里没有任何粒子、
+     离散光点或拖尾珠：整帧只画一团面光，中心一大片近乎等亮、边缘极柔，
+     随指针惯性移动并沿速度方向轻微拉伸，停下时自然收圆。无鼠标时右下
+     有一团缓慢呼吸的待机光，指针进入后平滑接管、离开后平滑退回。
+     光斑预渲染成 sprite，每帧零 createRadialGradient；0.5x 离屏合成再
+     放大，边缘天然再柔一层。色彩沿用 LOGO 石墨灰 + 正红，不引入第三种彩色。
      ===================================================================== */
   (function heroGlow() {
     var hero = $('#hero');
@@ -448,33 +450,28 @@
     var ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    /* 离屏：所有光团画在 0.5 倍分辨率上，放大后边缘更柔 */
-    var off = document.createElement('canvas');
-    var octx = off.getContext('2d');
-    var SCALE = 0.5;
-
+    var off = document.createElement('canvas'), octx = off.getContext('2d');
+    var SCALE = .5;
     var W = 0, H = 0, dpr = 1, t = 0, frame = 0, lastTs = 0, near = true, raf = 0;
-    var trail = [], ambient = [];
     var ptr = { x: -999, y: -999, has: false };
-    var glow = { x: -999, y: -999, has: false, energy: 0, vx: 0, vy: 0, fade: 0 };
-    var pal = palette();
+    var glow = { x: -999, y: -999, has: false, energy: 0,
+                 vx: 0, vy: 0, fade: 0, sp: 0, ang: 0 };
+    var pal = palette(), spr = {};
 
     function palette() {
       var dark = root.getAttribute('data-theme') === 'dark';
       return dark ? {
         mode: 'lighter',
-        hi:   [255, 238, 230],   /* 暖白高光：发光的核心 */
-        warm: [255, 107, 96],    /* LOGO 正红的深色版 */
-        cool: [96, 112, 140],    /* 极弱的冷石墨，只做外圈收边 */
-        ambA: .038, trailA: .115, coreA: .26, hiA: .34, coolA: .042,
-        veil: .30
+        hi:   [255, 238, 228],   /* 暖白亮核 */
+        warm: [255, 86, 78],     /* LOGO 正红的深色版 */
+        cool: [74, 86, 110],     /* 冷石墨，只做外圈收边 */
+        bodyA: .36, innerA: .17, coolA: .020, hiA: .34, veil: .20
       } : {
         mode: 'source-over',
-        hi:   [255, 249, 246],   /* 白心，把红晕洗亮 */
+        hi:   [255, 255, 255],   /* 白心：洗淡网格形成干净的光斑 */
         warm: [239, 68, 68],     /* LOGO 正红 */
         cool: [60, 65, 73],      /* LOGO 石墨灰 */
-        ambA: .020, trailA: .042, coreA: .070, hiA: .26, coolA: .013,
-        veil: .44
+        bodyA: .070, innerA: .028, coolA: .008, hiA: .48, veil: .22
       };
     }
     function rgba(c, a) {
@@ -482,19 +479,30 @@
         Math.max(0, Math.min(1, a)).toFixed(4) + ')';
     }
     function pad(v) { return ('0000' + Math.max(0, Math.round(v))).slice(-4); }
-    /* 左侧标题 / 正文区降低光量，保证文字始终压得住底纹 */
+    /* 左侧标题 / 正文区稍微收光，保证文字始终压得住底纹 */
     function veil(x, y) {
-      var u = Math.max(0, 1 - Math.abs(x - W * .27) / (W * .40));
-      var v = Math.max(0, 1 - Math.abs(y - H * .40) / (H * .46));
+      var u = Math.max(0, 1 - Math.abs(x - W * .26) / (W * .42));
+      var v = Math.max(0, 1 - Math.abs(y - H * .40) / (H * .48));
       return 1 - pal.veil * u * v;
     }
 
-    function seedAmbient() {
-      var R = Math.min(W, H);
-      ambient = [
-        { bx: .72, by: .32, r: R * .34, ph: .4,  sp: .17, ax: 40, ay: 24, k: 1 },
-        { bx: .56, by: .70, r: R * .30, ph: 2.4, sp: .13, ax: 32, ay: 28, k: .70 }
-      ];
+    /* 光斑贴图：中心一大片近乎等亮、边缘才渐隐 —— 是「一团面光」不是「一个点」 */
+    function makeSprite(col, stops) {
+      var c = document.createElement('canvas');
+      c.width = c.height = 256;
+      var g = c.getContext('2d');
+      var rg = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+      for (var i = 0; i < stops.length; i++) rg.addColorStop(stops[i][0], rgba(col, stops[i][1]));
+      g.fillStyle = rg;
+      g.fillRect(0, 0, 256, 256);
+      return c;
+    }
+    function buildSprites() {
+      var wide = [[0, 1], [.24, .88], [.50, .48], [.76, .12], [1, 0]];
+      var core = [[0, 1], [.20, .86], [.46, .40], [.74, .07], [1, 0]];
+      spr.warm = makeSprite(pal.warm, wide);
+      spr.cool = makeSprite(pal.cool, wide);
+      spr.hi   = makeSprite(pal.hi, core);
     }
 
     function resize() {
@@ -508,8 +516,6 @@
       off.width = Math.max(1, Math.round(W * SCALE));
       off.height = Math.max(1, Math.round(H * SCALE));
       octx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
-      seedAmbient();
-      trail.length = 0;
       if (reduceMotion) draw();
     }
 
@@ -529,118 +535,76 @@
       glow.energy = Math.min(1, glow.energy * .62 + jump / 150);
       glow.vx = prev ? x - prev.x : 0;
       glow.vy = prev ? y - prev.y : 0;
-
-      /* 拖尾：沿路径每 ~24px 落一枚光团，跳变过大时重新起笔 */
-      if (prev && jump < 130) {
-        var steps = Math.min(6, Math.max(1, Math.round(jump / 24)));
-        for (var k = 1; k <= steps; k++) {
-          var u = k / steps;
-          trail.push({
-            x: prev.x + (x - prev.x) * u + (Math.random() - .5) * 8,
-            y: prev.y + (y - prev.y) * u + (Math.random() - .5) * 8,
-            r: 78 + Math.random() * 58 + Math.min(48, jump * .30),
-            life: 1,
-            decay: .42 + Math.random() * .22,
-            k: .72 + Math.random() * .38
-          });
-        }
-        if (trail.length > 16) trail.splice(0, trail.length - 16);
-      }
       if (coord) coord.textContent = 'X ' + pad(x) + ' / Y ' + pad(y);
       if (reduceMotion) draw();
     }
 
     function update(dt) {
       t += dt;
-      /* 主光团带惯性追随指针，甩动时沿速度方向稍稍前探 */
       glow.fade += ((ptr.has ? 1 : 0) - glow.fade) * (1 - Math.pow(.06, dt));
       if (ptr.has) {
-        var lead = 16 + glow.energy * 26;
+        var lead = 12 + glow.energy * 20;
         var tx = ptr.x + glow.vx * lead / 24;
         var ty = ptr.y + glow.vy * lead / 24;
-        var f = 1 - Math.pow(.0025, dt);   /* 约 0.11/帧 @60fps */
+        var f = 1 - Math.pow(.0025, dt);
         glow.x += (tx - glow.x) * f;
         glow.y += (ty - glow.y) * f;
       }
       glow.energy *= Math.pow(.16, dt);
-      for (var i = trail.length - 1; i >= 0; i--) {
-        var b = trail[i];
-        b.life -= dt * b.decay;
-        b.r += dt * 22;                     /* 缓慢扩散 */
-        b.y -= dt * 5;
-        if (b.life <= 0) trail.splice(i, 1);
-      }
+      /* 拉伸量平滑，停下时光团自然收圆；不会形成可见的长尾 */
+      var speed = Math.min(1, Math.hypot(glow.vx, glow.vy) / 34);
+      glow.sp += (speed * (ptr.has ? 1 : 0) - glow.sp) * (1 - Math.pow(.02, dt));
+      if (Math.hypot(glow.vx, glow.vy) > 2) glow.ang = Math.atan2(glow.vy, glow.vx);
+      glow.vx *= Math.pow(.02, dt);
+      glow.vy *= Math.pow(.02, dt);
     }
 
-    /* 单枚柔光团：四段 colorStop，中心到边缘完全渐隐，没有任何硬边 */
-    function blob(x, y, r, col, a) {
-      if (r <= 0 || a <= 0) return;
-      var v = veil(x, y);
-      a *= v;
-      if (a <= .0006) return;
-      var g = octx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0,    rgba(col, a));
-      g.addColorStop(.22,  rgba(col, a * .62));
-      g.addColorStop(.48,  rgba(col, a * .20));
-      g.addColorStop(.72,  rgba(col, a * .04));
-      g.addColorStop(1,    rgba(col, 0));
-      octx.fillStyle = g;
-      octx.beginPath();
-      octx.arc(x, y, r, 0, 6.2832);
-      octx.fill();
-    }
-
-    function drawAmbient() {
-      for (var i = 0; i < ambient.length; i++) {
-        var a = ambient[i];
-        var x = W * a.bx + Math.sin(t * a.sp + a.ph) * a.ax;
-        var y = H * a.by + Math.cos(t * a.sp * .82 + a.ph) * a.ay;
-        var r = a.r * (1 + Math.sin(t * .19 + a.ph) * .06);
-        /* 冷暖叠层：外圈石墨灰打底，内圈正红薄雾 */
-        blob(x, y, r * 1.12, pal.cool, pal.coolA * a.k);
-        blob(x, y, r, pal.warm, pal.ambA * a.k);
+    /* 一团连续面光：石墨收边 → 正红辉光 → 内层加浓 → 暖白亮核 */
+    function core(x, y, R, k, energy, stretch) {
+      if (k <= .005 || R <= 0) return;
+      var v = veil(x, y) * k;
+      if (v <= .005) return;
+      var rr = R * (1 + energy * .08);
+      function layer(s, rad, a, st) {
+        octx.globalAlpha = a * v;
+        var q = st * .26;
+        if (q < .02) {
+          octx.drawImage(s, x - rad, y - rad, rad * 2, rad * 2);
+          return;
+        }
+        octx.save();
+        octx.translate(x, y);
+        octx.rotate(glow.ang);
+        octx.scale(1 + q, 1 - q * .55);
+        octx.drawImage(s, -rad, -rad, rad * 2, rad * 2);
+        octx.restore();
       }
-    }
-
-    function drawTrail() {
-      for (var i = 0; i < trail.length; i++) {
-        var b = trail[i];
-        var a = pal.trailA * b.life * b.life * b.k;
-        blob(b.x, b.y, b.r * 1.35, pal.cool, a * .30);
-        blob(b.x, b.y, b.r, pal.warm, a);
-      }
-    }
-
-    function drawCore() {
-      /* 待机位：右侧中部缓慢呼吸，压在菱形装饰附近，不碰左侧标题 */
-      var ix = W * (W < 620 ? .72 : .70) + Math.sin(t * .23) * W * .055;
-      var iy = H * .42 + Math.cos(t * .18) * H * .070;
-      var iR = (W < 620 ? 178 : 262) * (1 + Math.sin(t * .31) * .07);
-      var iA = .82 * (1 - glow.fade);      /* 指针接管后待机光淡出 */
-      if (iA > .01) {
-        blob(ix, iy, iR * 1.30, pal.cool, pal.coolA * iA);
-        blob(ix, iy, iR,        pal.warm, pal.coreA * iA);
-        blob(ix, iy, iR * .58,  pal.warm, pal.coreA * .66 * iA);
-        blob(ix, iy, iR * .32,  pal.hi,   pal.hiA * .80 * iA);
-      }
-      if (!glow.has || glow.fade < .01) return;
-      var R = (W < 620 ? 150 : 218) + glow.energy * 70;
-      var x = glow.x, y = glow.y;
-      var k = glow.fade;
-      /* 外圈石墨收边 → 正红辉光 → 加浓内层 → 暖白亮核 */
-      blob(x, y, R * 1.34, pal.cool, pal.coolA * k);
-      blob(x, y, R,        pal.warm, pal.coreA * k);
-      blob(x, y, R * .60,  pal.warm, pal.coreA * .70 * k);
-      blob(x, y, R * .34,  pal.hi,   pal.hiA * k);
+      layer(spr.cool, rr * 1.34, pal.coolA, 0);
+      layer(spr.warm, rr,        pal.bodyA,  stretch);
+      layer(spr.warm, rr * .58,  pal.innerA, stretch * .7);
+      layer(spr.hi,   rr * (pal.mode === 'lighter' ? .30 : .40),
+             pal.hiA, stretch * .25);
     }
 
     function draw() {
       ctx.clearRect(0, 0, W, H);
+      octx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
       octx.clearRect(0, 0, W, H);
       octx.globalCompositeOperation = pal.mode;
-      drawAmbient();
-      drawTrail();
-      drawCore();
+
+      /* 待机呼吸光：右下菱形中心，指针进入后平滑让位 */
+      var ix = W * (W < 620 ? .72 : .70) + Math.sin(t * .23) * W * .045;
+      var iy = H * .42 + Math.cos(t * .18) * H * .055;
+      var iR = (W < 620 ? 200 : 320) * (1 + Math.sin(t * .31) * .06);
+      var iA = .78 * (1 - glow.fade);
+      if (iA > .01) core(ix, iy, iR, iA, 0, 0);
+
+      /* 跟随指针的主光团 */
+      if (glow.has && glow.fade > .01) {
+        core(glow.x, glow.y, (W < 620 ? 200 : 320) + glow.energy * 48,
+             glow.fade, glow.energy, glow.sp);
+      }
+      octx.globalAlpha = 1;
       octx.globalCompositeOperation = 'source-over';
       ctx.drawImage(off, 0, 0, off.width, off.height, 0, 0, W, H);
     }
@@ -679,9 +643,11 @@
     }
     document.addEventListener('ic:theme', function () {
       pal = palette();
+      buildSprites();
       draw();
     });
 
+    buildSprites();
     resize();
     draw();
     if (!reduceMotion) raf = requestAnimationFrame(loop);
@@ -696,8 +662,9 @@
         },
         palette: function () { return pal; },
         state: function () {
-          return { W: W, H: H, trail: trail.length, ambient: ambient.length,
-                   pointer: ptr.has, visible: canvas.width > 0 };
+          return { W: W, H: H, frames: frame, pointer: ptr.has,
+                   fade: +glow.fade.toFixed(3), stretch: +glow.sp.toFixed(3),
+                   visible: canvas.width > 0 };
         },
         pixels: function () {
           var d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
