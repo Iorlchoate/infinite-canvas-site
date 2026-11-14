@@ -28,6 +28,9 @@
 </head>
 <body>
 
+<!-- 全站光晕层：固定在整个视口，页面滚动到任何位置都跟随鼠标 -->
+<canvas id="heroGlow" aria-hidden="true"></canvas>
+
 <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
 
 <header class="site-header" id="siteHeader">
@@ -65,7 +68,6 @@
 
   <!-- HERO -->
   <section class="hero wrap" id="hero">
-    <canvas id="heroGlow" aria-hidden="true"></canvas>
     <div class="iso-deco iso-hero" aria-hidden="true"><svg viewBox="0 0 200 132" aria-hidden="true"><path style="stroke:var(--graphite)" d="M100 6 192 36 100 66 8 36Z"/><path style="stroke:var(--graphite)" d="M100 32 192 62 100 92 8 62Z"/><path style="stroke:var(--accent)" d="M100 58 192 88 100 118 8 88Z"/></svg></div>
     <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="hero.eyebrow">LOCAL-FIRST AI CANVAS</span><span class="eyebrow-line"></span></div>
     <h1 class="hero-title"><span class="line"><span data-i18n="hero.title1">把想法、生成与沉淀</span></span><span class="line"><span class="gradient-text" data-i18n="hero.title2">都放进一张无限画布</span></span></h1>

@@ -184,13 +184,14 @@ html[data-theme="dark"] .ico-moon{display:none}
 
 /* ---------- HERO ---------- */
 .hero{position:relative;isolation:isolate;padding-top:92px;padding-bottom:40px;text-align:left}
-.hero > :not(#heroGlow):not(#heroFluid):not(.iso-deco){position:relative;z-index:1}
-#heroGlow,#heroFluid{position:absolute;inset:0;width:100%;height:100%;z-index:0;
+.hero > :not(.iso-deco){position:relative;z-index:1}
+/* 全站光晕层：fixed 覆盖整个视口，鼠标在页面任意滚动位置都能带动染料。
+   不再把光晕压在首屏中央一小块；只在最外缘做极窄渐隐避免贴边硬切。 */
+#heroGlow,#heroFluid{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;
   display:block;pointer-events:none}
-/* 与参考站一致：光晕向下渐隐，不压到下方的产品窗口 */
-/* 四边渐隐：消除 canvas 的矩形硬边，光晕像从纸面里透出来 */
-#heroFluid{-webkit-mask-image:radial-gradient(ellipse 74% 70% at 54% 44%,#000 26%,transparent 100%);
-  mask-image:radial-gradient(ellipse 74% 70% at 54% 44%,#000 26%,transparent 100%)}
+#heroFluid{filter:blur(5px);
+  -webkit-mask-image:radial-gradient(ellipse 96% 96% at 50% 50%,#000 88%,transparent 100%);
+  mask-image:radial-gradient(ellipse 96% 96% at 50% 50%,#000 88%,transparent 100%)}
 .hero .eyebrow{justify-content:flex-start;margin-bottom:24px}
 .hero .eyebrow .eyebrow-line:first-child{display:none}
 .hero .eyebrow .eyebrow-line:last-child{width:80px}
@@ -368,7 +369,7 @@ html[data-theme="dark"] .ico-moon{display:none}
 .final-title{position:relative;font-family:var(--head);font-size:clamp(38px,5vw,64px);font-weight:400;letter-spacing:.002em;margin:0 0 16px;line-height:1.25}
 .final p{position:relative;font-size:16px;color:var(--slate);margin:0 0 32px}
 .final-actions{position:relative;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.site-footer{border-top:1px solid var(--line-soft);padding-top:44px;background:var(--paper)}
+.site-footer{border-top:1px solid var(--line-soft);padding-top:44px;background:transparent}
 .footer-inner{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;align-items:flex-start}
 .footer-brand{display:flex;gap:12px;align-items:center}
 .footer-brand strong{display:block;font-family:var(--head);font-size:18px;color:var(--ink);font-weight:400}

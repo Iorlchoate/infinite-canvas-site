@@ -42,7 +42,7 @@
   var PRESSURE_ITERATIONS = 10;
   var PRESSURE_DECAY = 0.8;
   var VELOCITY_FADE = 4 * Math.pow(0.05 / 4, 0.6);
-  var DYE_FADE = 1.2;                 /* 留一点余辉，光团不至于太硬 */
+  var DYE_FADE = 1.9;                 /* 全屏画布下加快消散，避免染料堆成亮盘 */
   var CYCLE_PER_STAMP = 0.006;
   var CYCLE_PER_SECOND = 0.06;
   var AUTO_PATH_SPEED = 0.42;
@@ -51,17 +51,16 @@
   var IDLE_AFTER_MS = 2600;      /* 无鼠标 2.6s 后自动流动，静态首屏也有光 */
 
   /* 三色循环沿用参考站的 Oklab 插值机制。深色照搬它的高饱和蓝；
-     浅色不能照搬：白底上 source-over 只能染色/变暗，饱和蓝会变成
-     一层灰蓝水印，且与 LOGO 正红、标题笔刷打架。因此浅色改用与
-     石墨灰同源的低饱和冷灰蓝，只留「纸上水痕」的形体与流动。
-     加 ?glow=brand 可切暖灰系。 */
+     浅色用 LOGO 正红的橙红延伸：白底上只染色不发亮，所以三色收在
+     橙红区、跨度小，避免 Oklab 把深红→近白洗成灰粉肉色。
+     ?light=cool 可切冷灰纸感，?light=blue 看改前的蓝，?light=warm 更淡的橙。 */
   var REFERENCE = {
-    dark:  { colors: ['#1f4bff', '#55bdff', '#16c6e8'], opacity: 1.00 },
-    light: { colors: ['#8096aa', '#a3b7c7', '#c6d5e0'], opacity: 0.32 }
+    dark:  { colors: ['#1f4bff', '#55bdff', '#16c6e8'], opacity: 0.78 },
+    light: { colors: ['#c92c14', '#e8471e', '#f97a38'], opacity: 0.34 }
   };
   var BRAND = {
-    dark:  { colors: ['#ff2d2d', '#ff6a3d', '#ffb347'], opacity: 1.00 },
-    light: { colors: ['#bd9188', '#d2ada3', '#e3ccc3'], opacity: 0.30 }
+    dark:  { colors: ['#ff2d2d', '#ff6a3d', '#ffb347'], opacity: 0.78 },
+    light: { colors: ['#bf2810', '#e0431d', '#f87632'], opacity: 0.32 }
   };
   var PALETTES = /[?&]glow=brand/.test(location.search) ? BRAND : REFERENCE;
   /* 浅色策略对比开关：只覆盖 light，深色始终是参考站那团蓝。
@@ -69,9 +68,10 @@
      ?light=blue 保留改前的高饱和蓝，?light=warm 换 LOGO 红系低饱和暖灰。 */
   var LIGHT_VARIANTS = {
     blue: { colors: ['#1f4bff', '#55bdff', '#16c6e8'], opacity: 0.20 },
-    warm: { colors: ['#bd9188', '#d2ada3', '#e3ccc3'], opacity: 0.30 }
+    cool: { colors: ['#8096aa', '#a3b7c7', '#c6d5e0'], opacity: 0.32 },
+    warm: { colors: ['#d7653c', '#e88e58', '#f2b184'], opacity: 0.28 }
   };
-  var lightKey = (location.search.match(/[?&]light=(blue|warm)/) || [])[1];
+  var lightKey = (location.search.match(/[?&]light=(blue|cool|warm)/) || [])[1];
   if (lightKey) PALETTES = { dark: PALETTES.dark, light: LIGHT_VARIANTS[lightKey] };
 
   var vertexSource = '#version 300 es\n' +
@@ -227,6 +227,8 @@
     '  vec2 displaced = uv + perlinWithGradient(grain).yz * (0.15 * 0.008);\n' +
     '  vec3 ink = texture(dye, displaced).rgb;\n' +
     '  float alpha = clamp(max(ink.r, max(ink.g, ink.b)) * 1.35, 0.0, 1.0) * opacity;\n' +
+    /* 白底上低浓度染料会摊成脏灰雾；浅色用 S 曲线压掉薄雾，只留光团主体 */
+    '  if (opacity < 0.5) alpha = min(alpha * smoothstep(0.02, 0.34, alpha) * 1.15, 1.0);\n' +
     '  if (alpha < 0.002) { outColor = vec4(0.0); return; }\n' +
     '  float brightness = clamp(1.0 + (stone(grain) - 0.5) * 0.70, 0.0, 1.6);\n' +
     '  outColor = vec4(toSrgb(ink * brightness) * alpha, alpha);\n' +
@@ -286,7 +288,9 @@
   } catch (e) { gl = null; }
   if (!gl) return;                                  /* 交给 script.js 的 2D 面光兜底 */
   if (!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'))) return;
-  hero.insertBefore(canvas, hero.firstChild);
+  /* 画布挂到 body 顶层并固定覆盖整个视口，光晕随鼠标走遍整页，
+        不再受 HERO 区块高度与局部遮罩限制。 */
+  doc.body.insertBefore(canvas, doc.body.firstChild);
   window.__icFluid = true;
 
   function compileProgram(fragmentSource) {
@@ -477,8 +481,8 @@
   function autoPathPoint(seconds) {
     var t = seconds * AUTO_PATH_SPEED;
     return {
-      x: gridWidth * (0.62 + 0.20 * Math.sin(t * 1.1) * Math.cos(t * 0.37)),
-      y: gridHeight * (0.46 + 0.18 * Math.sin(t * 0.83 + 1.3) * Math.cos(t * 0.29 + 0.6))
+      x: gridWidth * (0.50 + 0.34 * Math.sin(t * 1.1) * Math.cos(t * 0.37)),
+      y: gridHeight * (0.50 + 0.32 * Math.sin(t * 0.83 + 1.3) * Math.cos(t * 0.29 + 0.6))
     };
   }
   var autoSeconds = Math.random() * 100;
@@ -569,25 +573,22 @@
     var dt = lastFrame === null ? 1 / 60 : Math.min((now - lastFrame) / 1000, 1 / 30);
     lastFrame = now;
     frames++;
-    if ((frames % 6) === 0) {
-      var r = hero.getBoundingClientRect();
-      var vh = window.innerHeight || doc.documentElement.clientHeight || 800;
-      near = r.bottom > -200 && r.top < vh + 200;
-    }
-    if (!near || document.hidden) return;
+    /* 画布 fixed 覆盖整个视口，页面任何滚动位置都可见 */
+    near = !document.hidden;
+    if (!near) return;
     advance(dt, now, true);
   }
 
   /* 静帧 / 无头：同步步进一段自动路径形成完整光晕，只渲染一次。
      resize 会重建 dye 场，所以语言切换 / 字体加载后也要重新播种。 */
   function seedStatic() {
-    /* 固定播种在右侧菱形中心（WebGL y 轴向上，0.58 对应屏幕约 42% 高度）。
+    /* 固定播种在右侧菱形中心（WebGL y 轴向上，0.46 对应屏幕约 54% 高度）。
        不用 autoSeconds 的随机起点，保证每次首屏光晕都在同一位置。 */
     var warmFrames = reduceMotion ? 26 : 34;
     for (var q = 0; q < warmFrames; q++) {
       var ang = q / warmFrames * Math.PI * 3.2;
-      var rr = 8 + q * 0.45;
-      stamp(gridWidth * 0.70 + Math.cos(ang) * rr, gridHeight * 0.58 + Math.sin(ang) * rr,
+      var rr = 6 + q * 0.85;
+      stamp(gridWidth * 0.70 + Math.cos(ang) * rr, gridHeight * 0.46 + Math.sin(ang) * rr,
             Math.cos(ang) * 10, Math.sin(ang) * 10);
       step(1 / 60);
     }

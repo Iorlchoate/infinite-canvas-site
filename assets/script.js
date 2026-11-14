@@ -444,10 +444,9 @@
      ===================================================================== */
   (function heroGlow() {
     if (window.__icFluid) return;   /* WebGL2 流体已接管，2D 面光只做降级兜底 */
-    var hero = $('#hero');
     var canvas = $('#heroGlow');
     var coord = $('#heroCoord');
-    if (!hero || !canvas) return;
+    if (!canvas) return;
     var ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -470,7 +469,7 @@
       } : {
         mode: 'source-over',
         hi:   [255, 255, 255],   /* 白心：洗淡网格形成干净的光斑 */
-        warm: [239, 68, 68],     /* LOGO 正红 */
+        warm: [242, 123, 69],    /* 与 WebGL 浅色一致的橙红 */
         cool: [60, 65, 73],      /* LOGO 石墨灰 */
         bodyA: .070, innerA: .028, coolA: .008, hiA: .48, veil: .22
       };
@@ -507,9 +506,9 @@
     }
 
     function resize() {
-      var r = hero.getBoundingClientRect();
-      W = Math.max(1, Math.round(r.width));
-      H = Math.max(1, Math.round(r.height));
+      /* 画布 fixed 覆盖整个视口，尺寸与滚动位置无关 */
+      W = Math.max(1, window.innerWidth || doc.documentElement.clientWidth || 1440);
+      H = Math.max(1, window.innerHeight || doc.documentElement.clientHeight || 900);
       dpr = Math.min(1.5, window.devicePixelRatio || 1);
       canvas.width = Math.round(W * dpr);
       canvas.height = Math.round(H * dpr);
@@ -521,8 +520,8 @@
     }
 
     function onMove(e) {
-      var r = hero.getBoundingClientRect();
-      var x = e.clientX - r.left, y = e.clientY - r.top;
+      /* fixed 画布左上角即视口原点，直接用 client 坐标 */
+      var x = e.clientX, y = e.clientY;
       if (x < -160 || y < -160 || x > W + 160 || y > H + 160) {
         ptr.has = false;
         if (coord) coord.textContent = 'X 0000 / Y 0000';
@@ -615,13 +614,9 @@
       var dt = lastTs ? Math.min(.05, (ts - lastTs) / 1000) : 1 / 60;
       lastTs = ts;
       frame++;
-      /* 用视口距离判断活性，IntersectionObserver 在 iframe 内会误判 */
-      if ((frame % 6) === 0) {
-        var r = hero.getBoundingClientRect();
-        var vh = window.innerHeight || document.documentElement.clientHeight || 800;
-        near = r.bottom > -200 && r.top < vh + 200;
-      }
-      if (!near || document.hidden) return;
+      /* 全视口常驻，只按标签页可见性暂停 */
+      near = !document.hidden;
+      if (!near) return;
       update(dt);
       draw();
     }
