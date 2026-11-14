@@ -1,6 +1,6 @@
 /* 无限画布官网交互
    纯原生 JS，无外部依赖，可直接跑在 GitHub Pages 上。
-   模块：i18n → 主题 → 导航/进度 → 界面预览 → 版本号 → 墨迹带（WebGL2 流体，含 2D 兜底） */
+   模块：i18n → 主题 → 导航/进度 → 界面预览 → 版本号 → 运用场景矢量场（Canvas2D） */
 (function () {
   'use strict';
 
@@ -44,7 +44,7 @@
 
     /* HERO */
     'hero.eyebrow': 'LOCAL-FIRST AI CANVAS',
-    'hero.title1': 'Ideas, generations, archive —',
+    'hero.title1': 'Ideas, generations, archive',
     'hero.title2': 'all on one infinite canvas',
     'hero.sub': 'Infinite Canvas is an AI studio that runs on your own machine. A portable runtime is bundled, so it starts on a double-click. Custom workflows, online generation, the infinite canvas and the asset library form one continuous flow — from a single prompt to a filed collection, without ever leaving the canvas.',
     'hero.cta1': 'Download for Windows',
@@ -81,24 +81,24 @@
     'node5.title': 'Asset groups',
     'node5.sub': 'Ready to publish online',
 
-    /* 墨迹带 */
-    'motion.aria': 'Interactive ink display',
-    'motion.eyebrow': 'IDEAS, IN MOTION',
-    'motion.title1': 'Everything can ',
-    'motion.titleHL': 'reconnect',
-    'motion.trigger': 'Let the ink gather again',
-    'motion.kw1': 'Images',
-    'motion.kw2': 'prompts',
-    'motion.kw3': 'results',
-    'motion.lead1': ', ',
-    'motion.lead2': ' and ',
-    'motion.lead3': ' — arrange, connect and recombine them on one canvas. No fixed order, and never just once.',
-    'motion.replayText': 'Stir again',
-    'motion.tip': 'Move your cursor in — the ink follows you',
+    /* 运用场景控制台 */
+    'field.aria': 'Interactive workflow field',
+    'field.eyebrow': 'FIELD NOTES · 04 WORKFLOWS',
+    'field.title': 'One canvas, one complete scheme',
+    'field.lead': 'Not "everything can connect". Four real jobs, first step to last, all on the same board. Pick one and watch it run.',
+    'field.listaria': 'Use cases',
+    'field.s1': 'Concept schemes',
+    'field.s1sub': 'Site plan → style transfer → concept renders',
+    'field.s2': 'Facade options',
+    'field.s2sub': 'Site photo → inpainting → material comparison',
+    'field.s3': 'Multi-view deck',
+    'field.s3sub': 'Render → outpaint → presentation layout',
+    'field.s4': 'Asset reuse',
+    'field.s4sub': 'Collect → group → reuse on the next project',
 
     /* WHY */
     'why.eyebrow': 'LOCAL BY DESIGN',
-    'why.title1': 'Your data stays here,',
+    'why.title1': 'Your data stays here',
     'why.title2': 'your flow never breaks',
     'why.lead': 'No account, no cloud workspace, no per-call billing. Your API key is written to a local config; assets, history and canvases live in your own folders.',
     'why.s1u': '',
@@ -241,28 +241,6 @@
     'ft.copy': '© 2026 Infinite Canvas'
   };
 
-  /* 动态状态文案（不写在 HTML 里，需要中英两份） */
-  var STATUS = {
-    zh: {
-      'motion.hint': '移动鼠标，搅动这池墨',
-      'motion.stirring': '墨迹跟着你走',
-      'motion.n0': '参考图 · 1–9 张，墨迹先落在这里',
-      'motion.n1': '提示词 · 关键词可批量替换，随时改写',
-      'motion.n2': '生成结果 · 直接摆回画布，继续连线',
-      'motion.replaying': '正在重新连接…',
-      'motion.done': '已重新连接 · 再搅一次'
-    },
-    en: {
-      'motion.hint': 'Move your cursor — stir the ink',
-      'motion.stirring': 'The ink follows you',
-      'motion.n0': 'Images · 1–9 references, the ink lands here first',
-      'motion.n1': 'Prompts · batch-replace keywords any time',
-      'motion.n2': 'Results · place them back on the canvas and wire them up',
-      'motion.replaying': 'Reconnecting…',
-      'motion.done': 'Reconnected · stir it again'
-    }
-  };
-
   var CAPTIONS = {
     zh: [
       '四个内置模板可改标题、画幅、节点与提示词，支持关键词批量替换与另存。',
@@ -279,11 +257,6 @@
   };
 
   var lang = 'zh';
-  function t(key) {
-    var table = STATUS[lang] || STATUS.zh;
-    return table[key] || STATUS.zh[key] || key;
-  }
-
   function applyLang(next, persist) {
     lang = next === 'en' ? 'en' : 'zh';
     root.setAttribute('lang', lang === 'en' ? 'en' : 'zh-CN');
@@ -476,735 +449,458 @@
   })();
 
   /* =====================================================================
-     3. 墨迹带：WebGL2 流体（鼠标划过拖出墨烟）
-     速度场 + 墨色场，semi-Lagrangian 平流 + 压力投影 + 涡量约束；
-     无 WebGL2 时退回 Canvas2D 拖尾，两者都是「跟随鼠标」的手感。
+     3. 运用场景控制台：Canvas2D 矢量场
+     不是流体烟。这里是等距网格随指针形变、发光轨迹、雷达环、
+     节点连线上跑的数据包和 HUD 读数 —— 科幻感来自结构与硬边光线。
      ===================================================================== */
-  (function inkBand() {
-    var canvas = $('#inkCanvas');
-    var band = $('#motion');
-    if (!canvas || !band || !canvas.getContext) return;
+  (function fieldBand() {
+    var stage = $('#fieldStage');
+    var canvas = $('#fieldCanvas');
+    if (!stage || !canvas) return;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    var statusEl = $('#motionStatus');
-    var kwEls = $$('.kw');
-    var replayBtn = $('#replayMotion');
-    var trigger = $('#reconnectTrigger');
-    var statusKey = 'motion.hint';
-    var statusHold = 0;      // 状态被交互临时占用到什么时候
-    var replayTimers = [];
+    var tabs = $$('.field-tab');
+    var descEl = $('#fieldDesc');
+    var tagEl = $('#fieldTag');
+    var flowEl = $('#fieldFlow');
+    var modeEl = $('#fieldMode');
+    var readoutEl = $('#fieldReadout');
 
-    function setStatus(key) {
-      statusKey = key;
-      if (statusEl) {
-        var s = t(key);
-        if (statusEl.textContent !== s) statusEl.textContent = s;
-      }
-    }
-    setStatus('motion.hint');
-    document.addEventListener('ic:lang', function () { setStatus(statusKey); });
-
-    function colors() {
-      var cs = getComputedStyle(root);
-      function parse(v) {
-        v = (v || '').trim();
-        if (v.charAt(0) === '#') {
-          var h = v.slice(1);
-          if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-          return [parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255];
+    /* 四个真实工作流：节点名、说明、流程、模式各带中英两份 */
+    var SCENES = [
+      {
+        pos: [[.13, .22], [.13, .53], [.47, .36], [.82, .20], [.82, .52]],
+        zh: {
+          mode: 'CONCEPT',
+          desc: '拿到一张手绘总平面和三张参考照片：拖进画布、连到风格迁移节点，一小时内出四版概念效果，选中的直接归入方案 A。',
+          nodes: ['总平面草图', '参考图 ×3', '风格迁移', '概念效果 ×4', '归档 · 方案 A'],
+          flow: ['总平面', '参考图', '风格迁移', '概念效果', '归档']
+        },
+        en: {
+          mode: 'CONCEPT',
+          desc: 'A hand-drawn site plan and three reference photos land on the canvas, wire into a style-transfer node, and four concept renders are in Scheme A within the hour.',
+          nodes: ['Site plan sketch', 'References ×3', 'Style transfer', 'Concept ×4', 'File · Scheme A'],
+          flow: ['Site plan', 'References', 'Transfer', 'Concepts', 'Archive']
         }
-        var m = v.match(/(\d+(?:\.\d+)?)/g);
-        if (m && m.length >= 3) return [+m[0] / 255, +m[1] / 255, +m[2] / 255];
-        return [0.07, 0.09, 0.15];
+      },
+      {
+        pos: [[.16, .20], [.16, .51], [.48, .31], [.80, .18], [.80, .49]],
+        zh: {
+          mode: 'FACADE',
+          desc: '旧建筑立面要试三种材质。用局部重绘只改指定区域，三轮结果并排摆在同一张布上，客户当场圈定，不用反复导出。',
+          nodes: ['实拍立面', '局部重绘', '材质 A', '材质 B / C', '并排比选'],
+          flow: ['实拍', '局部重绘', '材质变体', '并排比选']
+        },
+        en: {
+          mode: 'FACADE',
+          desc: 'Three material options for an old facade. Inpainting changes only the masked area; three rounds sit side by side on one board so the client can pick on the spot.',
+          nodes: ['Site photo', 'Inpainting', 'Material A', 'Material B / C', 'Side-by-side'],
+          flow: ['Photo', 'Inpaint', 'Variants', 'Compare']
+        }
+      },
+      {
+        pos: [[.13, .18], [.38, .20], [.55, .44], [.81, .19], [.81, .52]],
+        zh: {
+          mode: 'MULTIVIEW',
+          desc: '汇报前要补齐鸟瞰、人视和夜景：扩展出图接九宫格多视角，一次生成九张，选中的图直接排进汇报页。',
+          nodes: ['效果图', '扩展出图', '九宫格多视角', '鸟瞰 / 夜景', '汇报版式'],
+          flow: ['效果图', '扩展', '九宫格', '汇报页']
+        },
+        en: {
+          mode: 'MULTIVIEW',
+          desc: 'Before a review you need the aerial, the eye-level view and the night shot. Outpainting feeds a 3×3 multi-view grid: nine images in one run, chosen ones straight into the deck.',
+          nodes: ['Base render', 'Outpaint', '3×3 multi-view', 'Aerial / night', 'Deck layout'],
+          flow: ['Render', 'Outpaint', '3×3 views', 'Deck']
+        }
+      },
+      {
+        pos: [[.14, .24], [.38, .51], [.55, .23], [.78, .47], [.86, .19]],
+        zh: {
+          mode: 'LIBRARY',
+          desc: '项目收尾，上百张过程图批量采集、自动分组与智能分类；下个项目开新画布时，直接从素材库拖回来接着用。',
+          nodes: ['批量采集', '自动分组', '智能分类', '方案 A 素材', '跨项目复用'],
+          flow: ['采集', '分组', '分类', '复用']
+        },
+        en: {
+          mode: 'LIBRARY',
+          desc: 'At wrap-up, hundreds of in-progress images are collected, grouped and classified in one pass. On the next project you drag them straight back out of the library.',
+          nodes: ['Batch collect', 'Auto groups', 'Auto classify', 'Scheme A assets', 'Reuse'],
+          flow: ['Collect', 'Group', 'Classify', 'Reuse']
+        }
       }
-      return {
-        ink: parse(cs.getPropertyValue('--ink')),
-        accent: parse(cs.getPropertyValue('--coral')),
-        // 深色主题下同样是这么多墨，落在暗底上却显得厚一倍
-        dark: root.getAttribute('data-theme') === 'dark'
-      };
-    }
-    var pal = colors();
+    ];
 
-    /* 关键字对应的三个墨点锚位（uv，y 轴向上） */
-    function anchors() {
-      var wide = band.clientWidth > 900;
-      return wide
-        ? [[0.62, 0.68], [0.76, 0.50], [0.60, 0.30]]
-        : [[0.30, 0.34], [0.62, 0.30], [0.46, 0.16]];
+    var LINKS = [[0, 2], [1, 2], [2, 3], [2, 4]];
+    var C = {
+      mesh: 'rgba(94,234,212,.055)', meshHot: 'rgba(94,234,212,.72)',
+      wire: 'rgba(94,234,212,.22)', wireHot: 'rgba(94,234,212,.9)',
+      node: 'rgba(7,16,23,.94)', nodeLine: 'rgba(94,234,212,.36)',
+      text: '#dceef1', dim: '#6b8792', accent: '#5eead4', coral: '#f2685c'
+    };
+
+    function loc(n) { return n[lang] || n.zh; }
+    var active = 0;
+    var W = 0, H = 0, dpr = 1;
+    var frame = 0, lastTs = 0, near = true, raf = 0, scanX = 0;
+    var ptr = { x: -999, y: -999, has: false, lastRing: 0 };
+    var trail = [], rings = [], packets = [], nodes = [], flash = 0, hover = -1;
+    var NODE_W = 132, NODE_H = 44;
+
+    for (var n0 = 0; n0 < 5; n0++) nodes.push({ x: 0, y: 0, tx: 0, ty: 0, ready: false });
+
+    function resize() {
+      var r = stage.getBoundingClientRect();
+      W = Math.max(1, Math.round(r.width));
+      H = Math.max(1, Math.round(r.height));
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      NODE_W = Math.min(138, Math.max(96, W * 0.19));
+      NODE_H = W < 520 ? 38 : 44;
+      targetNodes(true);
+      if (reduceMotion) draw(0);
     }
 
-    /* ---------------- WebGL2 流体 ---------------- */
-    function createGL() {
-      var gl = canvas.getContext('webgl2', {
-        alpha: true, antialias: false, depth: false, stencil: false,
-        // 用直通 alpha：预乘后在淡部只有几级色阶，会出现环状台阶
-        premultipliedAlpha: false, preserveDrawingBuffer: true, powerPreference: 'low-power'
+    function targetNodes(snap) {
+      var p = SCENES[active].pos;
+      for (var i = 0; i < 5; i++) {
+        var x = Math.max(NODE_W / 2 + 12, Math.min(W - NODE_W / 2 - 12, p[i][0] * W));
+        // 手机上说明卡更高，给下半区留出空间，节点不要被盖住
+        var reserve = W < 520 ? H * .42 : 90;
+        var y = Math.max(NODE_H / 2 + 30, Math.min(H - NODE_H / 2 - reserve, p[i][1] * H));
+        nodes[i].tx = x; nodes[i].ty = y;
+        if (snap || !nodes[i].ready) { nodes[i].x = x; nodes[i].y = y; nodes[i].ready = true; }
+      }
+    }
+
+    function paintText() {
+      var s = loc(SCENES[active]);
+      if (descEl) descEl.textContent = s.desc;
+      if (tagEl) tagEl.textContent = 'SCENE 0' + (active + 1) + ' / 04';
+      if (modeEl) modeEl.textContent = s.mode;
+      if (flowEl) {
+        var h = '';
+        for (var i = 0; i < s.flow.length; i++) {
+          if (i) h += '<i></i>';
+          h += '<span></span>';
+        }
+        flowEl.innerHTML = h;
+        $$('#fieldFlow span').forEach(function (el, i) { el.textContent = s.flow[i]; });
+      }
+    }
+
+    function setScene(i) {
+      if (i === active && nodes[0].ready) return;
+      active = i;
+      tabs.forEach(function (t, k) {
+        t.classList.toggle('active', k === i);
+        t.setAttribute('aria-selected', k === i ? 'true' : 'false');
       });
-      if (!gl) return null;
-      if (!gl.getExtension('EXT_color_buffer_float') && !gl.getExtension('EXT_color_buffer_half_float')) return null;
-
-      var VS = [
-        '#version 300 es',
-        'layout(location=0) in vec2 aPos;',
-        'out vec2 vUv;',
-        'void main(){ vUv = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }'
-      ].join('\n');
-
-      var FS_SPLAT = ['#version 300 es', 'precision highp float;', 'in vec2 vUv; out vec4 o;',
-        'uniform sampler2D uTarget; uniform vec2 uPoint; uniform vec3 uColor;',
-        'uniform float uRadius; uniform float uStrength; uniform float uAspect;',
-        'void main(){',
-        '  vec2 p = vUv - uPoint; p.x *= uAspect;',
-        '  float f = exp(-dot(p, p) / uRadius);',
-        '  o = texture(uTarget, vUv) + vec4(uColor * f * uStrength, 0.0);',
-        '}'].join('\n');
-
-      var FS_ADVECT = ['#version 300 es', 'precision highp float;', 'in vec2 vUv; out vec4 o;',
-        'uniform sampler2D uVel; uniform sampler2D uSrc; uniform float uDt; uniform float uDiss;',
-        'void main(){',
-        '  vec2 v = texture(uVel, vUv).xy;',
-        '  vec2 c = clamp(vUv - uDt * v, vec2(0.0015), vec2(0.9985));',
-        '  o = texture(uSrc, c) / (1.0 + uDiss * uDt);',
-        '}'].join('\n');
-
-      var FS_CURL = ['#version 300 es', 'precision highp float;', 'in vec2 vUv; out vec4 o;',
-        'uniform sampler2D uVel; uniform vec2 uTexel;',
-        'void main(){',
-        '  float L = texture(uVel, vUv - vec2(uTexel.x, 0.0)).y;',
-        '  float R = texture(uVel, vUv + vec2(uTexel.x, 0.0)).y;',
-        '  float B = texture(uVel, vUv - vec2(0.0, uTexel.y)).x;',
-        '  float T = texture(uVel, vUv + vec2(0.0, uTexel.y)).x;',
-        '  o = vec4(0.5 * (R - L - T + B), 0.0, 0.0, 1.0);',
-        '}'].join('\n');
-
-      var FS_VORT = ['#version 300 es', 'precision highp float;', 'in vec2 vUv; out vec4 o;',
-        'uniform sampler2D uVel; uniform sampler2D uCurl; uniform vec2 uTexel;',
-        'uniform float uCurlStrength; uniform float uDt;',
-        'void main(){',
-        '  float L = texture(uCurl, vUv - vec2(uTexel.x, 0.0)).x;',
-        '  float R = texture(uCurl, vUv + vec2(uTexel.x, 0.0)).x;',
-        '  float B = texture(uCurl, vUv - vec2(0.0, uTexel.y)).x;',
-        '  float T = texture(uCurl, vUv + vec2(0.0, uTexel.y)).x;',
-        '  float C = texture(uCurl, vUv).x;',
-        '  vec2 f = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));',
-        '  f /= length(f) + 1e-4;',
-        '  f *= uCurlStrength * C;',
-        '  f.y *= -1.0;',
-        '  vec2 v = texture(uVel, vUv).xy + f * uDt;',
-        '  o = vec4(clamp(v, -4.0, 4.0), 0.0, 1.0);',
-        '}'].join('\n');
-
-      var FS_DIV = ['#version 300 es', 'precision highp float;', 'in vec2 vUv; out vec4 o;',
-        'uniform sampler2D uVel; uniform vec2 uTexel;',
-        'void main(){',
-        '  float L = texture(uVel, vUv - vec2(uTexel.x, 0.0)).x;',
-        '  float R = texture(uVel, vUv + vec2(uTexel.x, 0.0)).x;',
-        '  float B = texture(uVel, vUv - vec2(0.0, uTexel.y)).y;',
-        '  float T = texture(uVel, vUv + vec2(0.0, uTexel.y)).y;',
-        '  o = vec4(0.5 * (R - L + T - B), 0.0, 0.0, 1.0);',
-        '}'].join('\n');
-
-      var FS_JACOBI = ['#version 300 es', 'precision highp float;', 'in vec2 vUv; out vec4 o;',
-        'uniform sampler2D uPres; uniform sampler2D uDiv; uniform vec2 uTexel;',
-        'void main(){',
-        '  float L = texture(uPres, vUv - vec2(uTexel.x, 0.0)).x;',
-        '  float R = texture(uPres, vUv + vec2(uTexel.x, 0.0)).x;',
-        '  float B = texture(uPres, vUv - vec2(0.0, uTexel.y)).x;',
-        '  float T = texture(uPres, vUv + vec2(0.0, uTexel.y)).x;',
-        '  float d = texture(uDiv, vUv).x;',
-        '  o = vec4((L + R + B + T - d) * 0.25, 0.0, 0.0, 1.0);',
-        '}'].join('\n');
-
-      var FS_GRAD = ['#version 300 es', 'precision highp float;', 'in vec2 vUv; out vec4 o;',
-        'uniform sampler2D uPres; uniform sampler2D uVel; uniform vec2 uTexel;',
-        'void main(){',
-        '  float L = texture(uPres, vUv - vec2(uTexel.x, 0.0)).x;',
-        '  float R = texture(uPres, vUv + vec2(uTexel.x, 0.0)).x;',
-        '  float B = texture(uPres, vUv - vec2(0.0, uTexel.y)).x;',
-        '  float T = texture(uPres, vUv + vec2(0.0, uTexel.y)).x;',
-        '  vec2 v = texture(uVel, vUv).xy - vec2(R - L, T - B) * 0.5;',
-        '  o = vec4(v, 0.0, 1.0);',
-        '}'].join('\n');
-
-      var FS_CLEAR = ['#version 300 es', 'precision highp float;', 'in vec2 vUv; out vec4 o;',
-        'uniform sampler2D uSrc; uniform float uValue;',
-        'void main(){ o = texture(uSrc, vUv) * uValue; }'].join('\n');
-
-      var FS_DISPLAY = ['#version 300 es', 'precision highp float;', 'in vec2 vUv; out vec4 o;',
-        'uniform sampler2D uDye; uniform vec3 uInk; uniform vec3 uAccent; uniform float uOpacity;',
-        'void main(){',
-        '  vec2 d = texture(uDye, vUv).rg;',
-        '  float amt = d.r + d.g;',
-        '  float a = 1.0 - exp(-amt * 2.35);',
-        '  float tAcc = d.g / max(amt, 1e-4);',
-        '  vec3 col = mix(uInk, uAccent, clamp(tAcc * 1.7, 0.0, 1.0));',
-        '  a *= uOpacity;',
-        '  o = vec4(col, a);',
-        '}'].join('\n');
-
-      var vao, vbo;
-      function compile(type, src) {
-        var s = gl.createShader(type);
-        gl.shaderSource(s, src);
-        gl.compileShader(s);
-        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-          if (window.console) console.warn('shader:', gl.getShaderInfoLog(s));
-          return null;
-        }
-        return s;
-      }
-      var vsObj = compile(gl.VERTEX_SHADER, VS);
-      if (!vsObj) return null;
-
-      function program(fsSrc) {
-        var fs = compile(gl.FRAGMENT_SHADER, fsSrc);
-        if (!fs) return null;
-        var p = gl.createProgram();
-        gl.attachShader(p, vsObj);
-        gl.attachShader(p, fs);
-        gl.linkProgram(p);
-        if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
-          if (window.console) console.warn('link:', gl.getProgramInfoLog(p));
-          return null;
-        }
-        var u = {};
-        var n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
-        for (var i = 0; i < n; i++) {
-          var info = gl.getActiveUniform(p, i);
-          var name = info.name.replace(/\[0\]$/, '');
-          u[name] = gl.getUniformLocation(p, name);
-        }
-        return { p: p, u: u };
-      }
-
-      var progs = {
-        splat: program(FS_SPLAT), advect: program(FS_ADVECT), curl: program(FS_CURL),
-        vort: program(FS_VORT), div: program(FS_DIV), jacobi: program(FS_JACOBI),
-        grad: program(FS_GRAD), clear: program(FS_CLEAR), display: program(FS_DISPLAY)
-      };
-      for (var k in progs) { if (!progs[k]) return null; }
-
-      vao = gl.createVertexArray();
-      gl.bindVertexArray(vao);
-      vbo = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-      gl.enableVertexAttribArray(0);
-      gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-      gl.disable(gl.BLEND);
-      gl.disable(gl.DEPTH_TEST);
-
-      /* ---- 资源 ---- */
-      var simW = 1, simH = 1, dyeW = 1, dyeH = 1;
-      var velocity = null, dye = null, pressure = null, divF = null, curlF = null;
-
-      function fbo(w, h, internal, format, type, filter) {
-        var tex = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texImage2D(gl.TEXTURE_2D, 0, internal, w, h, 0, format, type, null);
-        var fb = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-        if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) return null;
-        gl.viewport(0, 0, w, h);
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        return { tex: tex, fbo: fb, w: w, h: h };
-      }
-      function doubleFBO(w, h, internal, format, type, filter) {
-        var a = fbo(w, h, internal, format, type, filter);
-        var b = fbo(w, h, internal, format, type, filter);
-        if (!a || !b) return null;
-        return {
-          read: a, write: b, w: w, h: h,
-          swap: function () { var tmp = this.read; this.read = this.write; this.write = tmp; }
-        };
-      }
-
-      var T = {
-        rg: [gl.RG16F, gl.RG, gl.HALF_FLOAT],
-        r: [gl.R16F, gl.RED, gl.HALF_FLOAT]
-      };
-
-      function alloc() {
-        velocity = doubleFBO(simW, simH, T.rg[0], T.rg[1], T.rg[2], gl.LINEAR);
-        dye = doubleFBO(dyeW, dyeH, T.rg[0], T.rg[1], T.rg[2], gl.LINEAR);
-        pressure = doubleFBO(simW, simH, T.r[0], T.r[1], T.r[2], gl.LINEAR);
-        divF = fbo(simW, simH, T.r[0], T.r[1], T.r[2], gl.NEAREST);
-        curlF = fbo(simW, simH, T.r[0], T.r[1], T.r[2], gl.NEAREST);
-        return !!(velocity && dye && pressure && divF && curlF);
-      }
-
-      function bindTex(unit, tex) {
-        gl.activeTexture(gl.TEXTURE0 + unit);
-        gl.bindTexture(gl.TEXTURE_2D, tex);
-      }
-      function drawTo(target) {
-        if (target) {
-          gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
-          gl.viewport(0, 0, target.w, target.h);
-        } else {
-          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-          gl.viewport(0, 0, canvas.width, canvas.height);
-        }
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
-      }
-
-      var simTexel = [1 / 128, 1 / 128];
-      var dtCur = 1 / 60;
-
-      function splat(field, point, color, radius, strength) {
-        var P = progs.splat;
-        dbg.splats++;
-        gl.useProgram(P.p);
-        gl.uniform1i(P.u.uTarget, 0); bindTex(0, field.read.tex);
-        gl.uniform2f(P.u.uPoint, point[0], point[1]);
-        gl.uniform3f(P.u.uColor, color[0], color[1], color[2]);
-        gl.uniform1f(P.u.uRadius, radius);
-        gl.uniform1f(P.u.uStrength, strength);
-        gl.uniform1f(P.u.uAspect, canvas.width / Math.max(1, canvas.height));
-        drawTo(field.write);
-        field.swap();
-      }
-
-      function advect(src, dst, diss) {
-        var P = progs.advect;
-        gl.useProgram(P.p);
-        gl.uniform1i(P.u.uVel, 0); bindTex(0, velocity.read.tex);
-        gl.uniform1i(P.u.uSrc, 1); bindTex(1, src.read.tex);
-        gl.uniform1f(P.u.uDt, dtCur);
-        gl.uniform1f(P.u.uDiss, diss);
-        drawTo(dst.write);
-        dst.swap();
-      }
-
-      function step() {
-        var P;
-        // 涡量约束：让墨迹有卷曲的丝状边缘，而不是一团糊
-        P = progs.curl;
-        gl.useProgram(P.p);
-        gl.uniform1i(P.u.uVel, 0); bindTex(0, velocity.read.tex);
-        gl.uniform2f(P.u.uTexel, simTexel[0], simTexel[1]);
-        drawTo(curlF);
-
-        P = progs.vort;
-        gl.useProgram(P.p);
-        gl.uniform1i(P.u.uVel, 0); bindTex(0, velocity.read.tex);
-        gl.uniform1i(P.u.uCurl, 1); bindTex(1, curlF.tex);
-        gl.uniform2f(P.u.uTexel, simTexel[0], simTexel[1]);
-        gl.uniform1f(P.u.uCurlStrength, 26);
-        gl.uniform1f(P.u.uDt, dtCur);
-        drawTo(velocity.write);
-        velocity.swap();
-
-        // 压力投影：去掉散度，墨迹才会绕着走
-        P = progs.div;
-        gl.useProgram(P.p);
-        gl.uniform1i(P.u.uVel, 0); bindTex(0, velocity.read.tex);
-        gl.uniform2f(P.u.uTexel, simTexel[0], simTexel[1]);
-        drawTo(divF);
-
-        P = progs.clear;
-        gl.useProgram(P.p);
-        gl.uniform1i(P.u.uSrc, 0); bindTex(0, pressure.read.tex);
-        gl.uniform1f(P.u.uValue, 0.78);
-        drawTo(pressure.write);
-        pressure.swap();
-
-        P = progs.jacobi;
-        gl.useProgram(P.p);
-        gl.uniform1i(P.u.uDiv, 0); bindTex(0, divF.tex);
-        gl.uniform2f(P.u.uTexel, simTexel[0], simTexel[1]);
-        for (var i = 0; i < 16; i++) {
-          gl.uniform1i(P.u.uPres, 1); bindTex(1, pressure.read.tex);
-          drawTo(pressure.write);
-          pressure.swap();
-        }
-
-        P = progs.grad;
-        gl.useProgram(P.p);
-        gl.uniform1i(P.u.uPres, 0); bindTex(0, pressure.read.tex);
-        gl.uniform1i(P.u.uVel, 1); bindTex(1, velocity.read.tex);
-        gl.uniform2f(P.u.uTexel, simTexel[0], simTexel[1]);
-        drawTo(velocity.write);
-        velocity.swap();
-
-        // 平流
-        advect(velocity, velocity, 0.22);
-        advect(dye, dye, 0.92);
-      }
-
-      function display() {
-        var P = progs.display;
-        gl.useProgram(P.p);
-        gl.uniform1i(P.u.uDye, 0); bindTex(0, dye.read.tex);
-        gl.uniform3f(P.u.uInk, pal.ink[0], pal.ink[1], pal.ink[2]);
-        gl.uniform3f(P.u.uAccent, pal.accent[0], pal.accent[1], pal.accent[2]);
-        gl.uniform1f(P.u.uOpacity, pal.dark ? 0.6 : 0.94);
-        // 必须先绑默认帧缓冲再清屏：否则会清掉上一步刚写好的墨色缓冲
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.viewport(0, 0, canvas.width, canvas.height);
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
-      }
-
-      function resize() {
-        var rect = band.getBoundingClientRect();
-        var dpr = Math.min(window.devicePixelRatio || 1, 1.75);
-        var w = Math.max(2, Math.round(rect.width * dpr));
-        var h = Math.max(2, Math.round(rect.height * dpr));
-        if (canvas.width === w && canvas.height === h && velocity) return true;
-        canvas.width = w;
-        canvas.height = h;
-        var aspect = w / h;
-        var base = window.innerWidth < 760 ? 96 : 120;
-        if (aspect >= 1) { simH = base; simW = Math.min(420, Math.round(base * aspect)); }
-        else { simW = base; simH = Math.round(base / Math.max(0.35, aspect)); }
-        var dBase = window.innerWidth < 760 ? 300 : 460;
-        if (aspect >= 1) { dyeH = dBase; dyeW = Math.min(1100, Math.round(dBase * aspect)); }
-        else { dyeW = dBase; dyeH = Math.round(dBase / Math.max(0.35, aspect)); }
-        simTexel = [1 / simW, 1 / simH];
-        return alloc();
-      }
-
-      return {
-        resize: resize,
-        splatVelocity: function (pt, dx, dy) { splat(velocity, pt, [dx, dy, 0], 0.0017, 1); },
-        splatInk: function (pt, ink, acc, radius) { splat(dye, pt, [ink, acc, 0], radius || 0.0017, 1); },
-        step: function (dt) { dtCur = Math.max(0.006, Math.min(1 / 32, dt)); step(); },
-        display: display,
-        setPalette: function () { pal = colors(); },
-        sample: function (u, v) {
-          var buf = new Uint16Array(2);
-          gl.bindFramebuffer(gl.FRAMEBUFFER, dye.read.fbo);
-          gl.readPixels(Math.floor(dyeW * (u || 0.7)), Math.floor(dyeH * (v || 0.5)), 1, 1, gl.RG, gl.HALF_FLOAT, buf);
-          return [buf[0], buf[1]];
-        },
-        canvasSample: function (x, y) {
-          var b = new Uint8Array(4);
-          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-          gl.readPixels(x | 0, y | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, b);
-          return Array.prototype.slice.call(b);
-        },
-        gl: gl
-      };
-    }
-
-    /* ---------------- Canvas2D 兜底：拖尾 ---------------- */
-    function create2D() {
-      var ctx = canvas.getContext('2d');
-      if (!ctx) return null;
-      var pts = [];
-      return {
-        resize: function () {
-          var rect = band.getBoundingClientRect();
-          var dpr = Math.min(window.devicePixelRatio || 1, 2);
-          canvas.width = Math.max(2, Math.round(rect.width * dpr));
-          canvas.height = Math.max(2, Math.round(rect.height * dpr));
-          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-          pts.length = 0;
-          return true;
-        },
-        splatVelocity: function (pt, dx, dy) {
-          pts.push({ x: pt[0] * canvas.clientWidth, y: (1 - pt[1]) * canvas.clientHeight, a: 1, dx: dx, dy: dy });
-          if (pts.length > 90) pts.shift();
-        },
-        splatInk: function () {},
-        step: function () {},
-        display: function () {
-          var w = canvas.clientWidth, h = canvas.clientHeight;
-          ctx.globalCompositeOperation = 'destination-out';
-          ctx.fillStyle = 'rgba(0,0,0,0.055)';
-          ctx.fillRect(0, 0, w, h);
-          ctx.globalCompositeOperation = 'source-over';
-          var col = pal.ink;
-          var rgb = Math.round(col[0] * 255) + ',' + Math.round(col[1] * 255) + ',' + Math.round(col[2] * 255);
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-          for (var i = 1; i < pts.length; i++) {
-            var p0 = pts[i - 1], p1 = pts[i];
-            var t = i / pts.length;
-            ctx.strokeStyle = 'rgba(' + rgb + ',' + (0.42 * t).toFixed(3) + ')';
-            ctx.lineWidth = 22 * t;
-            ctx.beginPath();
-            ctx.moveTo(p0.x, p0.y);
-            ctx.lineTo(p1.x, p1.y);
-            ctx.stroke();
-          }
-        },
-        setPalette: function () { pal = colors(); },
-        gl: null
-      };
-    }
-
-    var engine = null;
-    var useGL = true;
-    var dbg = { frames: 0, splats: 0, lastAmt: -1 };
-    function ensureEngine() {
-      if (engine) return engine;
-      if (useGL) {
-        var g = null;
-        try { g = createGL(); } catch (e) { g = null; }
-        if (g) {
-          engine = g;
-          engine.setPalette();
-          // 浮点纹理分配失败（老显卡）时立刻退回 2D，别留下半死的引擎
-          if (engine.resize() === false) engine = null;
-        }
-      }
-      if (!engine) {
-        useGL = false;
-        engine = create2D();
-        if (engine) { engine.setPalette(); engine.resize(); }
-      }
-      return engine;
-    }
-
-    /* ---------------- 指针与动画 ---------------- */
-    var pointer = { x: 0.5, y: 0.5, px: 0.5, py: 0.5, has: false, lastMove: 0, speed: 0 };
-    var ambT = Math.random() * 20;
-    var lastTs = 0;
-    var raf = 0;
-    var frameCount = 0;
-    var near = true;
-
-    function toUv(e) {
-      var r = band.getBoundingClientRect();
-      if (!r.width || !r.height) return null;
-      return [(e.clientX - r.left) / r.width, 1 - (e.clientY - r.top) / r.height];
-    }
-
-    function burstAt(pt, power, accent) {
-      if (!engine) return;
-      var a = accent || 0;
-      engine.splatInk(pt, 0.16 * power, a, 0.0028);
-      engine.splatVelocity(pt, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5);
-    }
-
-    function connectLine(from, to) {
-      if (!engine) return;
-      var n = 9;
-      for (var i = 1; i < n; i++) {
-        var t = i / n;
-        engine.splatInk([from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t], 0.018, 0, 0.0011);
-      }
+      paintText();
+      targetNodes(false);
+      flash = 1;
+      rings.push({ x: W * .5, y: H * .38, r: 0, a: .9 });
+      packets = LINKS.map(function (_, k) { return { p: (k * .23 + Math.random() * .2) % 1, sp: .28 + Math.random() * .18 }; });
+      if (reduceMotion) draw(0);
     }
 
     function onMove(e) {
-      if (!engine) return;
-      var uv = toUv(e);
-      if (!uv) return;
+      var r = stage.getBoundingClientRect();
+      ptr.x = e.clientX - r.left;
+      ptr.y = e.clientY - r.top;
+      ptr.has = true;
       var now = performance.now();
-      if (!pointer.has) {
-        pointer.has = true;
-        pointer.x = uv[0]; pointer.y = uv[1];
-        burstAt(uv, 0.7, 0);
-        return;
+      trail.push({ x: ptr.x, y: ptr.y });
+      if (trail.length > 26) trail.shift();
+      if (now - ptr.lastRing > 170) {
+        rings.push({ x: ptr.x, y: ptr.y, r: 0, a: .75 });
+        ptr.lastRing = now;
       }
-      var dx = uv[0] - pointer.x;
-      var dy = uv[1] - pointer.y;
-      var dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 0.0009) return;
-      var k = Math.min(1, 0.16 / dist);
-      dx *= k; dy *= k;                       // 跳变时截断，避免一次甩出巨浪
-      pointer.x = uv[0]; pointer.y = uv[1];
-      pointer.lastMove = now;
-      pointer.speed = dist;
-
-      var gain = 14;
-      var ink = 0.030 + Math.min(0.062, dist * 5.2);
-      var acc = Math.random() < 0.055 ? 0.05 : 0;
-      var steps = dist > 0.05 ? 3 : 1;
-      for (var s = 1; s <= steps; s++) {
-        var t = s / steps;
-        var pt = [uv[0] - dx * (1 - t), uv[1] - dy * (1 - t)];
-        engine.splatVelocity(pt, dx * gain, dy * gain);
-        engine.splatInk(pt, ink / steps * 1.5, acc, 0.0017);
+      if (rings.length > 8) rings.shift();
+      hover = hitNode(ptr.x, ptr.y);
+      if (readoutEl) {
+        var txt = 'X ' + pad(ptr.x) + ' · Y ' + pad(ptr.y) + ' · NODES 05 · LINKS 04';
+        if (hover >= 0) txt += ' · FOCUS ' + loc(SCENES[active]).nodes[hover];
+        readoutEl.textContent = txt;
       }
-      if (reduceMotion) engine.display();
-      if (now > statusHold) setStatus('motion.stirring');
+      if (reduceMotion) draw(0);
     }
 
-    function onLeave() {
-      pointer.has = false;
-      if (performance.now() > statusHold) setStatus('motion.hint');
-    }
+    function pad(v) { return ('0000' + Math.max(0, Math.round(v))).slice(-4); }
 
-    function ambient(dt) {
-      if (!engine) return;
-      ambT += dt;
-      var wide = band.clientWidth > 900;
-      var cx = wide ? 0.73 : 0.5;
-      var cy = wide ? 0.5 : 0.32;
-      var amp = wide ? 0.19 : 0.24;
-      var x = cx + amp * Math.sin(ambT * 0.34) * 0.9 + 0.05 * Math.sin(ambT * 0.9);
-      var y = cy + amp * Math.cos(ambT * 0.27) * 0.8;
-      var dx = Math.cos(ambT * 0.34) * 0.22 * amp;
-      var dy = -Math.sin(ambT * 0.27) * 0.22 * amp;
-      engine.splatVelocity([x, y], dx, dy);
-      engine.splatInk([x, y], 0.042, 0, 0.0024);
-    }
-
-    function frame(ts) {
-      var dt = lastTs ? (ts - lastTs) / 1000 : 1 / 60;
-      lastTs = ts;
-      raf = requestAnimationFrame(frame);
-      if (document.hidden || !engine) return;
-      dbg.frames++;
-      if (reduceMotion) { engine.display(); return; }
-      // 视口距离每 6 帧量一次：比 IntersectionObserver 更可靠（IO 在 iframe /
-      // 程序化滚动里会漏报，一旦误判为不可见就永久停住）
-      if ((frameCount++ % 6) === 0) {
-        var rect = band.getBoundingClientRect();
-        var vh = window.innerHeight || document.documentElement.clientHeight || 800;
-        near = rect.bottom > -320 && rect.top < vh + 320;
+    function hitNode(x, y) {
+      for (var i = 0; i < 5; i++) {
+        var n = nodes[i];
+        if (Math.abs(x - n.x) < NODE_W / 2 + 4 && Math.abs(y - n.y) < NODE_H / 2 + 4) return i;
       }
-      if (!near) return;
-      ambient(dt);
-      engine.step(dt);
-      engine.display();
-      canvas.classList.add('ready');
-
-      var now = performance.now();
-      if (now > statusHold && now - pointer.lastMove > 1600 && statusKey === 'motion.stirring') {
-        setStatus(anchorState >= 0 ? 'motion.n' + anchorState : 'motion.hint');
-      }
+      return -1;
     }
 
-    /* 关键词 → 墨点落位 */
-    var anchorState = -1;
-    function activateNode(i) {
-      anchorState = i;
-      kwEls.forEach(function (el, k) {
-        el.classList.toggle('active', k === i);
-        el.setAttribute('aria-pressed', k === i ? 'true' : 'false');
-      });
-      if (i < 0) {
-        setStatus('motion.hint');
-        statusHold = 0;
-        return;
-      }
-      var A = anchors();
-      burstAt(A[i], 1.3, 0.10);
-      connectLine(A[i], A[(i + 1) % 3]);
-      setStatus('motion.n' + i);
-      statusHold = performance.now() + 2600;
+    function rr(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
     }
 
-    kwEls.forEach(function (el, i) {
-      el.setAttribute('aria-pressed', 'false');
-      el.addEventListener('mouseenter', function () { activateNode(i); });
-      el.addEventListener('focus', function () { activateNode(i); });
-      el.addEventListener('click', function () {
-        activateNode(anchorState === i ? -1 : i);
-      });
-      el.addEventListener('mouseleave', function () { if (anchorState === i) activateNode(-1); });
-    });
-
-    function replay() {
-      replayTimers.forEach(clearTimeout);
-      replayTimers = [];
-      setStatus('motion.replaying');
-      statusHold = performance.now() + 2000;
-      if (!engine) return;
-      var A = anchors();
-      var mid = [0.5 * (A[0][0] + A[2][0]), 0.5 * (A[0][1] + A[2][1])];
-      for (var i = 0; i < 3; i++) {
-        var a = (i / 3) * Math.PI * 2;
-        engine.splatVelocity(mid, Math.cos(a) * 1.4, Math.sin(a) * 1.4);
-      }
-      burstAt(mid, 1.6, 0.12);
-      engine.splatInk(mid, 0.18, 0, 0.0050);
-      if (reduceMotion) { engine.step(0.016); engine.display(); }
-      replayTimers.push(setTimeout(function () {
-        setStatus('motion.done');
-        statusHold = performance.now() + 1800;
-      }, 700));
-      replayTimers.push(setTimeout(function () {
-        setStatus(anchorState >= 0 ? 'motion.n' + anchorState : 'motion.hint');
-      }, 3000));
-    }
-    if (replayBtn) replayBtn.addEventListener('click', replay);
-    if (trigger) {
-      trigger.addEventListener('click', replay);
-      trigger.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); replay(); }
-      });
+    function fitText(s, maxW) {
+      if (ctx.measureText(s).width <= maxW) return s;
+      var t = s;
+      while (t.length > 2 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+      return t + '…';
     }
 
-    document.addEventListener('ic:theme', function () {
-      pal = colors();
-      if (engine) engine.setPalette();
-      if (reduceMotion && engine) { engine.display(); }
-    });
-
-    /* 启动 */
-    if (!ensureEngine()) {
-      return; // 连 2D 都拿不到，静态背景即可
-    }
-    if (/[?&]debug=ink/.test(location.search)) {
-      window.__ink = {
-        frames: function () { return dbg.frames; },
-        splats: function () { return dbg.splats; },
-        kind: function () { return useGL ? 'gl' : '2d'; },
-        sample: function () {
-          return engine.sample ? engine.sample(0.7, 0.5) : 'n/a';
-        },
-        canvasSample: function () {
-          return engine.canvasSample ? engine.canvasSample(canvas.width * 0.7, canvas.height * 0.5) : 'n/a';
-        },
-        state: function () {
-          return {
-            w: canvas.width, h: canvas.height,
-            cls: canvas.className, op: getComputedStyle(canvas).opacity,
-            near: near, hidden: document.hidden
-          };
-        },
-        pal: function () { return pal; },
-        err: function () { return engine.gl ? engine.gl.getError() : -1; },
-        step: function (n) {
-          for (var i = 0; i < (n || 1); i++) { ambient(1 / 60); engine.step(1 / 60); }
-          engine.display();
-          canvas.classList.add('ready');
-          return engine.gl ? engine.gl.getError() : -1;
-        },
-        splatOnly: function () {
-          burstAt([0.7, 0.5], 1.0, 0);
-          return engine.gl ? engine.gl.getError() : -1;
-        },
-        tick: function (n) {
-          for (var i = 0; i < (n || 1); i++) { ambient(1 / 60); engine.step(1 / 60); }
-          engine.display();
-          canvas.classList.add('ready');
-          return dbg.frames;
-        }
+    function bez(a, b, t) {
+      var mx = (a.x + b.x) / 2;
+      var u = 1 - t;
+      return {
+        x: u * u * u * a.x + 3 * u * u * t * mx + 3 * u * t * t * mx + t * t * t * b.x,
+        y: u * u * u * a.y + 3 * u * u * t * a.y + 3 * u * t * t * b.y + t * t * t * b.y
       };
     }
-    if (reduceMotion) {
-      var A0 = anchors();
-      burstAt(A0[1], 1.4, 0.09);
-      for (var si = 0; si < 24; si++) engine.step(1 / 60);
-      engine.display();
-      canvas.classList.add('ready');
-    } else {
-      band.addEventListener('pointermove', onMove, { passive: true });
-      band.addEventListener('pointerleave', onLeave, { passive: true });
-      // 先落一点墨，避免刚滚到这里时是一片空白
-      var seed = anchors();
-      burstAt(seed[1], 1.0, 0.05);
-      for (var si0 = 0; si0 < 6; si0++) engine.step(1 / 60);
-      engine.display();
-      canvas.classList.add('ready');
-      window.addEventListener('resize', function () {
-        if (ensureEngine()) { engine.resize(); pal = colors(); }
-      }, { passive: true });
-      raf = requestAnimationFrame(frame);
+
+    function update(dt) {
+      for (var i = 0; i < 5; i++) {
+        nodes[i].x += (nodes[i].tx - nodes[i].x) * Math.min(1, dt * 7);
+        nodes[i].y += (nodes[i].ty - nodes[i].y) * Math.min(1, dt * 7);
+      }
+      for (i = 0; i < packets.length; i++) {
+        packets[i].p = (packets[i].p + dt * packets[i].sp) % 1;
+      }
+      for (i = rings.length - 1; i >= 0; i--) {
+        rings[i].r += dt * 105;
+        rings[i].a -= dt * .85;
+        if (rings[i].a <= 0) rings.splice(i, 1);
+      }
+      if (flash > 0) flash = Math.max(0, flash - dt * 1.5);
+      scanX = (scanX + dt * 62) % (W + 120);
+      if (trail.length && !ptr.has) trail.shift();
+    }
+
+    function drawMesh() {
+      var step = 38;
+      var cols = Math.ceil(W / step) + 1, rows = Math.ceil(H / step) + 1;
+      var pts = [], j, i;
+      for (j = 0; j < rows; j++) {
+        var row = [];
+        for (i = 0; i < cols; i++) {
+          var bx = i * step, by = j * step;
+          var dx = bx - ptr.x, dy = by - ptr.y;
+          var d = Math.sqrt(dx * dx + dy * dy) || 1;
+          var inf = ptr.has ? Math.max(0, 1 - d / 185) : 0;
+          var pull = inf * inf * 24;
+          row.push({ x: bx + dx / d * pull, y: by + dy / d * pull, hot: inf });
+        }
+        pts.push(row);
+      }
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = C.mesh;
+      ctx.beginPath();
+      for (j = 0; j < rows; j++) {
+        for (i = 0; i < cols; i++) {
+          var p = pts[j][i];
+          if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+        }
+      }
+      for (i = 0; i < cols; i++) {
+        for (j = 0; j < rows; j++) {
+          var q = pts[j][i];
+          if (j === 0) ctx.moveTo(q.x, q.y); else ctx.lineTo(q.x, q.y);
+        }
+      }
+      ctx.stroke();
+
+      /* 指针附近的网格点被点亮，并向指针拉出细丝 */
+      if (ptr.has) {
+        ctx.strokeStyle = 'rgba(94,234,212,.16)';
+        ctx.beginPath();
+        for (j = 0; j < rows; j++) for (i = 0; i < cols; i++) {
+          var a = pts[j][i];
+          if (a.hot > .42) { ctx.moveTo(ptr.x, ptr.y); ctx.lineTo(a.x, a.y); }
+        }
+        ctx.stroke();
+        for (j = 0; j < rows; j++) for (i = 0; i < cols; i++) {
+          var b = pts[j][i];
+          if (b.hot > .02) {
+            ctx.fillStyle = 'rgba(94,234,212,' + (b.hot * .8).toFixed(3) + ')';
+            var sz = 1 + b.hot * 2.2;
+            ctx.fillRect(b.x - sz / 2, b.y - sz / 2, sz, sz);
+          }
+        }
+      }
+    }
+
+    function drawLinks() {
+      ctx.lineWidth = 1.1;
+      LINKS.forEach(function (lk, k) {
+        var a = nodes[lk[0]], b = nodes[lk[1]];
+        var active = hover === lk[0] || hover === lk[1];
+        ctx.strokeStyle = active ? C.wireHot : C.wire;
+        ctx.beginPath();
+        var mx = (a.x + b.x) / 2;
+        ctx.moveTo(a.x, a.y);
+        ctx.bezierCurveTo(mx, a.y, mx, b.y, b.x, b.y);
+        ctx.stroke();
+        if (!packets.length) return;
+        var pk = packets[k % packets.length];
+        if (!pk) return;
+        var p = bez(a, b, pk.p);
+        ctx.fillStyle = C.accent;
+        ctx.shadowColor = C.accent; ctx.shadowBlur = 9;
+        ctx.fillRect(p.x - 2.5, p.y - 2.5, 5, 5);
+        ctx.shadowBlur = 0;
+      });
+    }
+
+    function drawNodes() {
+      var s = loc(SCENES[active]);
+      for (var i = 0; i < 5; i++) {
+        var n = nodes[i], x = n.x - NODE_W / 2, y = n.y - NODE_H / 2;
+        var on = hover === i;
+        rr(x, y, NODE_W, NODE_H, 7);
+        ctx.fillStyle = C.node; ctx.fill();
+        ctx.strokeStyle = on ? C.coral : C.nodeLine;
+        ctx.lineWidth = on ? 1.4 : 1;
+        ctx.stroke();
+        /* 左侧编号条 */
+        ctx.fillStyle = on ? 'rgba(242,104,92,.16)' : 'rgba(94,234,212,.09)';
+        rr(x + 1, y + 1, 27, NODE_H - 2, 6); ctx.fill();
+        ctx.font = '400 9px ' + 'ui-monospace,Consolas,monospace';
+        ctx.fillStyle = on ? C.coral : C.accent;
+        ctx.textBaseline = 'middle';
+        ctx.fillText('0' + (i + 1), x + 8, n.y);
+        ctx.font = '500 10.5px -apple-system,"Segoe UI","Microsoft YaHei",sans-serif';
+        ctx.fillStyle = C.text;
+        ctx.fillText(fitText(s.nodes[i], NODE_W - 44), x + 34, n.y);
+        ctx.fillStyle = on ? C.coral : 'rgba(94,234,212,.55)';
+        ctx.beginPath(); ctx.arc(x + NODE_W - 10, y + 9, 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    function drawPointer() {
+      /* 发光轨迹 */
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (var i = 1; i < trail.length; i++) {
+        var a = i / trail.length;
+        ctx.strokeStyle = 'rgba(94,234,212,' + (a * a * .6).toFixed(3) + ')';
+        ctx.lineWidth = .8 + a * 2;
+        if (i > trail.length - 7) { ctx.shadowColor = C.accent; ctx.shadowBlur = 10; }
+        ctx.beginPath();
+        ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
+        ctx.lineTo(trail[i].x, trail[i].y);
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+      /* 雷达环 */
+      rings.forEach(function (r) {
+        ctx.strokeStyle = 'rgba(94,234,212,' + Math.max(0, r.a * .55).toFixed(3) + ')';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
+      });
+      if (!ptr.has) return;
+      /* 十字准星 + 方括号 */
+      ctx.strokeStyle = 'rgba(94,234,212,.85)'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(ptr.x - 15, ptr.y); ctx.lineTo(ptr.x - 6, ptr.y);
+      ctx.moveTo(ptr.x + 6, ptr.y); ctx.lineTo(ptr.x + 15, ptr.y);
+      ctx.moveTo(ptr.x, ptr.y - 15); ctx.lineTo(ptr.x, ptr.y - 6);
+      ctx.moveTo(ptr.x, ptr.y + 6); ctx.lineTo(ptr.x, ptr.y + 15);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 4, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(94,234,212,.3)';
+      var g = 21;
+      ctx.beginPath();
+      ctx.moveTo(ptr.x - g, ptr.y - g + 6); ctx.lineTo(ptr.x - g, ptr.y - g); ctx.lineTo(ptr.x - g + 6, ptr.y - g);
+      ctx.moveTo(ptr.x + g - 6, ptr.y - g); ctx.lineTo(ptr.x + g, ptr.y - g); ctx.lineTo(ptr.x + g, ptr.y - g + 6);
+      ctx.moveTo(ptr.x - g, ptr.y + g - 6); ctx.lineTo(ptr.x - g, ptr.y + g); ctx.lineTo(ptr.x - g + 6, ptr.y + g);
+      ctx.moveTo(ptr.x + g - 6, ptr.y + g); ctx.lineTo(ptr.x + g, ptr.y + g); ctx.lineTo(ptr.x + g, ptr.y + g - 6);
+      ctx.stroke();
+    }
+
+    function draw(dt) {
+      ctx.clearRect(0, 0, W, H);
+      drawMesh();
+      /* 慢速扫描线 */
+      if (scanX < W) {
+        var g = ctx.createLinearGradient(scanX - 28, 0, scanX + 4, 0);
+        g.addColorStop(0, 'rgba(94,234,212,0)');
+        g.addColorStop(1, 'rgba(94,234,212,.055)');
+        ctx.fillStyle = g;
+        ctx.fillRect(scanX - 28, 0, 32, H);
+      }
+      drawLinks();
+      drawNodes();
+      drawPointer();
+      if (flash > 0) {
+        var fx = W * (1 - flash);
+        ctx.fillStyle = 'rgba(94,234,212,' + (flash * .07).toFixed(3) + ')';
+        ctx.fillRect(0, 0, W, H);
+        ctx.strokeStyle = 'rgba(94,234,212,' + (flash * .8).toFixed(3) + ')';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(fx, 0); ctx.lineTo(fx, H); ctx.stroke();
+      }
+    }
+
+    function loop(ts) {
+      raf = requestAnimationFrame(loop);
+      var dt = lastTs ? Math.min(.05, (ts - lastTs) / 1000) : 1 / 60;
+      lastTs = ts;
+      frame++;
+      if ((frame % 6) === 0) {
+        var r = stage.getBoundingClientRect();
+        var vh = window.innerHeight || document.documentElement.clientHeight || 800;
+        near = r.bottom > -240 && r.top < vh + 240;
+      }
+      if (!near || document.hidden) return;
+      update(dt);
+      draw(dt);
+    }
+
+    /* 事件 */
+    tabs.forEach(function (t, i) {
+      t.addEventListener('click', function () { setScene(i); });
+    });
+    stage.addEventListener('pointermove', onMove, { passive: true });
+    stage.addEventListener('pointerleave', function () {
+      ptr.has = false; hover = -1; trail.length = 0;
+      if (readoutEl) readoutEl.textContent = 'X 0000 · Y 0000 · NODES 05 · LINKS 04';
+      if (reduceMotion) draw(0);
+    });
+    stage.addEventListener('pointerdown', function (e) {
+      onMove(e);
+      rings.push({ x: ptr.x, y: ptr.y, r: 0, a: 1 });
+      flash = .7;
+    });
+    window.addEventListener('resize', resize, { passive: true });
+    document.addEventListener('ic:lang', function () { paintText(); if (reduceMotion) draw(0); });
+    document.addEventListener('ic:theme', function () { if (reduceMotion) draw(0); });
+
+    resize();
+    paintText();
+    packets = LINKS.map(function (_, k) { return { p: k * .24, sp: .3 + k * .04 }; });
+    rings.push({ x: W * .5, y: H * .38, r: 20, a: .5 });
+    draw(0);
+    if (!reduceMotion) raf = requestAnimationFrame(loop);
+
+    /* 仅供无头渲染校验：rAF 在后台标签页会被节流，用 tick() 强制步进 */
+    if (/[?&]debug=field/.test(location.search)) {
+      window.__field = {
+        tick: function (n) { for (var i = 0; i < (n || 1); i++) { update(1 / 60); draw(1 / 60); } },
+        move: function (u, v) {
+          var r = stage.getBoundingClientRect();
+          onMove({ clientX: r.left + r.width * u, clientY: r.top + r.height * v });
+        },
+        scene: setScene,
+        state: function () {
+          return { W: W, H: H, scene: active, trail: trail.length, rings: rings.length,
+                   packets: packets.length, nodes: nodes.length, visible: canvas.width > 0 };
+        }
+      };
     }
   })();
 })();

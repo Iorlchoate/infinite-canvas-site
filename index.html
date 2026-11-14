@@ -65,7 +65,7 @@
   <!-- HERO -->
   <section class="hero wrap">
     <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="hero.eyebrow">LOCAL-FIRST AI CANVAS</span><span class="eyebrow-line"></span></div>
-    <h1 class="hero-title"><span data-i18n="hero.title1">把想法、生成与沉淀，</span><br><span class="gradient-text" data-i18n="hero.title2">都放进一张无限画布</span></h1>
+    <h1 class="hero-title"><span class="line"><span data-i18n="hero.title1">把想法、生成与沉淀</span></span><span class="line"><span class="gradient-text" data-i18n="hero.title2">都放进一张无限画布</span></span></h1>
     <p class="hero-sub" data-i18n="hero.sub">无限画布是一台跑在你自己电脑上的 AI 创作工作台。内置便携运行时，双击即用；自定义工作流、在线生图、无限画布、素材库串成一条流，从一句提示词到归档成册，不用离开画布。</p>
     <div class="hero-actions">
       <a class="btn btn-primary" href="https://github.com/Iorlchoate/Infinite-Canvas-UDG/releases/latest" target="_blank" rel="noopener">
@@ -80,8 +80,21 @@
       <span><i class="dot"></i><span><span data-i18n="hero.m3">当前版本</span> <b id="versionBadge">2026.11.12.2</b></span></span>
     </div>
 
+    <!-- 技术读数条：把「本地运行」这件事做成可看见的状态，而不是一句口号 -->
+    <div class="hero-hud" aria-hidden="true">
+      <span class="hud-item"><i class="hud-key">SYS</i><b>LOCAL</b></span>
+      <span class="hud-sep"></span>
+      <span class="hud-item"><i class="hud-key">RUNTIME</i><b>PORTABLE</b></span>
+      <span class="hud-sep"></span>
+      <span class="hud-item"><i class="hud-key">NODES</i><b>05</b></span>
+      <span class="hud-sep"></span>
+      <span class="hud-live"><i></i>LINK ACTIVE</span>
+      <span class="hud-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="hud-coord">X 0000 / Y 0000</span>
+    </div>
+
     <!-- 产品界面示意（纯 CSS/SVG，无外部资源） -->
-    <div class="hero-window glass">
+    <div class="hero-window glass" data-label="CANVAS / 01">
       <div class="window-stage">
       <div class="window-bar">
         <div class="traffic"><i></i><i></i><i></i></div>
@@ -145,35 +158,66 @@
     </div>
   </section>
 
-  <!-- 墨迹展示带 -->
-  <section class="particle-band" id="motion" aria-label="交互式墨迹展示" data-i18n-aria="motion.aria">
-    <canvas id="inkCanvas" aria-hidden="true"></canvas>
-    <div class="particle-vignette" aria-hidden="true"></div>
-    <div class="particle-inner wrap">
-      <div class="eyebrow particle-eyebrow"><span class="eyebrow-line"></span><span data-i18n="motion.eyebrow">IDEAS, IN MOTION</span><span class="eyebrow-line"></span></div>
-      <h2 class="particle-title"><span data-i18n="motion.title1">一切都能</span><span class="gradient-text reconnect-trigger" id="reconnectTrigger" role="button" tabindex="0" aria-label="让墨迹重新聚拢" data-i18n-aria="motion.trigger"><span data-i18n="motion.titleHL">重新连接</span></span></h2>
-      <p class="particle-lead">
-        <button class="kw" type="button" data-node="0"><span data-i18n="motion.kw1">参考图</span></button><span data-i18n="motion.lead1">、</span><button class="kw" type="button" data-node="1"><span data-i18n="motion.kw2">提示词</span></button><span data-i18n="motion.lead2">、</span><button class="kw" type="button" data-node="2"><span data-i18n="motion.kw3">生成结果</span></button><span data-i18n="motion.lead3">，在同一张画布上自由摆放、连线与重组。不必按顺序，也不必只做一次。</span>
-      </p>
-      <div class="particle-controls">
-        <div class="particle-hint"><span class="hint-dot"></span><span id="motionStatus">移动鼠标，搅动这池墨</span></div>
-        <button class="motion-replay" type="button" id="replayMotion"><span data-i18n="motion.replayText">再搅一次</span> <span aria-hidden="true">↗</span></button>
+  <!-- 运用场景控制台：四个真实工作流 + 矢量场画布 -->
+  <section class="field-band" id="field" aria-label="运用场景演示" data-i18n-aria="field.aria">
+    <div class="field-shell wrap">
+      <div class="field-head">
+        <div class="field-intro">
+          <div class="field-eyebrow"><span class="live-dot"></span><span data-i18n="field.eyebrow">FIELD NOTES · 04 WORKFLOWS</span></div>
+          <h2 class="field-title" data-i18n="field.title">一张画布，走完一个方案</h2>
+          <p class="field-lead" data-i18n="field.lead">不是「什么都能连」。下面四件真实的工作，从第一步到最后一步都留在同一张布上。点一个场景，看它怎么走。</p>
+        </div>
+        <div class="field-sys" aria-hidden="true">
+          <div class="sys-row"><span>SYS</span><b>LOCAL / OFFLINE-READY</b></div>
+          <div class="sys-row"><span>MODE</span><b>CANVAS · NODE GRAPH</b></div>
+          <div class="sys-row"><span>LINK</span><b class="on">● ACTIVE</b></div>
+          <div class="sys-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><em>12</em></div>
+        </div>
       </div>
-      <p class="particle-tip" data-i18n="motion.tip">把鼠标移进来，墨迹会跟着你走</p>
+
+      <div class="field-body">
+        <div class="field-list" role="tablist" aria-label="运用场景" data-i18n-aria="field.listaria">
+          <button class="field-tab active" type="button" role="tab" aria-selected="true" data-scene="0">
+            <span class="fi-no">01</span><span class="fi-text"><b data-i18n="field.s1">概念方案推演</b><small data-i18n="field.s1sub">总平面 → 风格迁移 → 概念效果</small></span><span class="fi-mark" aria-hidden="true">↗</span>
+          </button>
+          <button class="field-tab" type="button" role="tab" aria-selected="false" data-scene="1">
+            <span class="fi-no">02</span><span class="fi-text"><b data-i18n="field.s2">立面改造比选</b><small data-i18n="field.s2sub">实拍照片 → 局部重绘 → 材质比选</small></span><span class="fi-mark" aria-hidden="true">↗</span>
+          </button>
+          <button class="field-tab" type="button" role="tab" aria-selected="false" data-scene="2">
+            <span class="fi-no">03</span><span class="fi-text"><b data-i18n="field.s3">多视角汇报</b><small data-i18n="field.s3sub">效果图 → 扩展出图 → 汇报版式</small></span><span class="fi-mark" aria-hidden="true">↗</span>
+          </button>
+          <button class="field-tab" type="button" role="tab" aria-selected="false" data-scene="3">
+            <span class="fi-no">04</span><span class="fi-text"><b data-i18n="field.s4">素材沉淀复用</b><small data-i18n="field.s4sub">批量采集 → 分组 → 下个项目复用</small></span><span class="fi-mark" aria-hidden="true">↗</span>
+          </button>
+        </div>
+
+        <div class="field-stage" id="fieldStage">
+          <canvas id="fieldCanvas" aria-hidden="true"></canvas>
+          <span class="stage-corner tl" aria-hidden="true"></span><span class="stage-corner tr" aria-hidden="true"></span>
+          <span class="stage-corner bl" aria-hidden="true"></span><span class="stage-corner br" aria-hidden="true"></span>
+          <div class="stage-top" aria-hidden="true"><span>CANVAS FIELD / 05 NODES</span><span id="fieldMode">CONCEPT</span></div>
+          <div class="stage-readout" id="fieldReadout" aria-hidden="true">X 0000 · Y 0000 · NODES 05 · LINKS 04</div>
+          <div class="stage-desc" aria-live="polite">
+            <span class="sd-tag" id="fieldTag">SCENE 01 / 04</span>
+            <p id="fieldDesc">拿到一张手绘总平面和三张参考照片：拖进画布、连到风格迁移节点，一小时内出四版概念效果，选中的直接归入方案 A。</p>
+            <div class="sd-flow" id="fieldFlow"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- WHY LOCAL -->
-  <section class="section wrap" id="why">
+  <section class="section wrap" id="why" data-ch="01">
     <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="why.eyebrow">LOCAL BY DESIGN</span><span class="eyebrow-line"></span></div>
-    <h2 class="section-title"><span data-i18n="why.title1">数据留在本机，</span><br><span data-i18n="why.title2">创作不被打断</span></h2>
+    <h2 class="section-title"><span class="line"><span data-i18n="why.title1">数据留在本机</span></span><span class="line"><span data-i18n="why.title2">创作不被打断</span></span></h2>
     <p class="section-lead" data-i18n="why.lead">没有账号、没有云端工作区、没有按次计费。API Key 只写进本机配置，素材、历史与画布都落在你自己的文件夹里。</p>
 
     <div class="stat-grid">
       <div class="stat glass"><div class="stat-num">0<span data-i18n="why.s1u">次</span></div><div class="stat-label" data-i18n="why.s1l">安装配置</div><p data-i18n="why.s1p">解压后双击 start.bat，不用装 Python、不用配环境。</p></div>
       <div class="stat glass"><div class="stat-num">4<span data-i18n="why.s2u">个</span></div><div class="stat-label" data-i18n="why.s2l">模块，一条链路</div><p data-i18n="why.s2p">模板、生成、连线、归档共用同一套侧栏。</p></div>
       <div class="stat glass"><div class="stat-num">1–9<span data-i18n="why.s3u">张</span></div><div class="stat-label" data-i18n="why.s3l">参考图自定义</div><p data-i18n="why.s3p">每张带 IMAGE 编号，写 Prompt 时直接指代。</p></div>
-      <div class="stat glass"><div class="stat-num">100<span data-i18n="why.s4u">%</span></div><div class="stat-label" data-i18n="why.s4l">数据在本地</div><p data-i18n="why.s4p">素材、生成历史与 Key 都不离开这台电脑。</p></div>
+      <div class="stat glass invert"><div class="stat-num">100<span data-i18n="why.s4u">%</span></div><div class="stat-label" data-i18n="why.s4l">数据在本地</div><p data-i18n="why.s4p">素材、生成历史与 Key 都不离开这台电脑。</p></div>
     </div>
 
     <div class="compare glass">
@@ -186,7 +230,7 @@
   </section>
 
   <!-- FEATURES -->
-  <section class="section wrap" id="features">
+  <section class="section wrap" id="features" data-ch="02">
     <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="feat.eyebrow">ONE CONTINUOUS FLOW</span><span class="eyebrow-line"></span></div>
     <h2 class="section-title" data-i18n="feat.title">四个模块，一条完整的创作链路</h2>
     <p class="section-lead" data-i18n="feat.lead">从模板到参考图，从节点连线到素材归档，每一步都留在同一套界面里。侧栏一次点击就切换，上下文不会丢。</p>
@@ -204,7 +248,7 @@
         <p data-i18n="f2.p">直连云端 API 生成。参考图支持 1–9 张自定义，每张带固定 IMAGE 编号，点编号即可插入提示词，写 Prompt 时直接指代对应图片。</p>
         <div class="chip-row"><span class="chip">IMAGE 0–8</span><span class="chip" data-i18n="f2.c2">多参考图</span></div>
       </article>
-      <article class="feature glass">
+      <article class="feature glass mark">
         <div class="feature-top"><span class="feature-no">03</span><span class="feature-icon" aria-hidden="true">⌘</span></div>
         <h3 data-i18n="f3.t">无限画布</h3>
         <p data-i18n="f3.p">节点自由摆放、连线组合。文生图、图生图、局部重绘、扩展出图、九宫格多视角都在同一张画布上完成。</p>
@@ -228,7 +272,7 @@
   </section>
 
   <!-- SCREENS -->
-  <section class="section wrap" id="screens">
+  <section class="section wrap" id="screens" data-ch="03">
     <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="scr.eyebrow">EVERY MODULE, ONE CANVAS</span><span class="eyebrow-line"></span></div>
     <h2 class="section-title" data-i18n="scr.title">界面长什么样</h2>
     <p class="section-lead" data-i18n="scr.lead">四个模块共用同一套侧栏，浅色与暗色主题都已适配，平板与手机浏览器也能打开。</p>
@@ -240,7 +284,7 @@
         <button class="screen-tab" role="tab" aria-selected="false" data-target="shot-3" data-i18n="scr.tab3">无限画布</button>
         <button class="screen-tab" role="tab" aria-selected="false" data-target="shot-4" data-i18n="scr.tab4">素材库</button>
       </div>
-      <div class="screen-stage">
+      <div class="screen-stage" data-label="LIVE VIEW">
         <figure class="screen-shot active" id="shot-1"><img src="assets/screenshots/custom-workflow.png" alt="自定义工作流界面：四个可编辑模板与提示词配置" loading="lazy"></figure>
         <figure class="screen-shot" id="shot-2"><img src="assets/screenshots/online-studio.png" alt="在线生图界面：参考图槽位与提示词" loading="lazy"></figure>
         <figure class="screen-shot" id="shot-3"><img src="assets/screenshots/canvas-overview.png" alt="无限画布界面：节点与连线的生成流程" loading="lazy"></figure>
@@ -251,7 +295,7 @@
   </section>
 
   <!-- 画布远景 -->
-  <section class="section wrap" id="closeup">
+  <section class="section wrap" id="closeup" data-ch="04">
     <div class="closeup-grid">
       <figure class="closeup glass">
         <img src="assets/screenshots/canvas-material-grid.jpg" alt="画布远景：上百张素材卡片并排，靠连线圈成同一套方案" loading="lazy" width="1200" height="750">
@@ -265,7 +309,7 @@
   </section>
 
   <!-- OPEN -->
-  <section class="section wrap" id="opensource">
+  <section class="section wrap" id="opensource" data-ch="05">
     <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="open.eyebrow">OPEN &amp; ACCOUNTABLE</span><span class="eyebrow-line"></span></div>
     <h2 class="section-title" data-i18n="open.title">开源、可自查、可回滚</h2>
     <p class="section-lead" data-i18n="open.lead">代码在 GitHub 上，行为可以自己看；更新之前会自动备份，任何时候都能退回上一版。</p>
@@ -283,7 +327,7 @@
   </section>
 
   <!-- DOWNLOAD -->
-  <section class="section wrap" id="download">
+  <section class="section wrap" id="download" data-ch="06">
     <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="dl.eyebrow">READY WHEN YOU ARE</span><span class="eyebrow-line"></span></div>
     <h2 class="section-title" data-i18n="dl.title">一分钟开始创作</h2>
     <p class="section-lead" data-i18n="dl.lead">新用户直接下载绿色包，不用克隆仓库、不用安装 Python。</p>
@@ -314,7 +358,7 @@
   </section>
 
   <!-- FAQ -->
-  <section class="section wrap" id="faq">
+  <section class="section wrap" id="faq" data-ch="07">
     <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="faq.eyebrow">QUESTIONS PEOPLE ASK</span><span class="eyebrow-line"></span></div>
     <h2 class="section-title" data-i18n="faq.title">常见问题</h2>
     <div class="faq-list">
