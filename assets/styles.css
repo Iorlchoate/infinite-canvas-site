@@ -51,7 +51,7 @@ html[data-theme="dark"]{
   --accent-line:rgba(255,107,96,.22);
   --chip:rgba(255,255,255,.06);
   --grid-line:rgba(255,255,255,.028);
-  --brush:rgba(255,107,96,.10);
+  --brush:transparent;            /* 深色下不做实心笔刷，避免标题下出现暗红色带 */
   --paper:#16181d;
   --fog:#0e1014;
   --mist:#1b1e24;
