@@ -2,6 +2,7 @@
    规则：白卡 24px 圆角 + 发丝边、胶囊按钮 9999px、内容卡不加投影，
    只有「悬浮的产品界面」允许极轻的海拔感。深色主题用同一套令牌反转。 */
 :root{
+  --glow-fade:1;   /* 首屏光晕可见度，由 script.js 随滚动写入 */
   /* 与程序界面（brief-workbench.html）同源的浅雾灰 / 纯白 / 发丝边 */
   --paper:#ffffff;
   --fog:#f5f7f9;
@@ -185,10 +186,10 @@ html[data-theme="dark"] .ico-moon{display:none}
 /* ---------- HERO ---------- */
 .hero{position:relative;isolation:isolate;padding-top:92px;padding-bottom:40px;text-align:left}
 .hero > :not(.iso-deco){position:relative;z-index:1}
-/* 全站光晕层：fixed 覆盖整个视口，鼠标在页面任意滚动位置都能带动染料。
-   不再把光晕压在首屏中央一小块；只在最外缘做极窄渐隐避免贴边硬切。 */
+/* 首屏光晕层：fixed 覆盖整个视口，首屏内光团可跟到任意位置、不被容器裁切。
+   可见度由 --glow-fade 控制，滚过第一屏后完全退场；只在最外缘渐隐避免硬切。 */
 #heroGlow,#heroFluid{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;
-  display:block;pointer-events:none}
+  display:block;pointer-events:none;opacity:var(--glow-fade,1)}
 #heroFluid{filter:blur(5px);
   -webkit-mask-image:radial-gradient(ellipse 96% 96% at 50% 50%,#000 88%,transparent 100%);
   mask-image:radial-gradient(ellipse 96% 96% at 50% 50%,#000 88%,transparent 100%)}
@@ -404,7 +405,7 @@ html[data-theme="dark"] .ico-moon{display:none}
   .hud-wave,.hud-coord{display:none}
   .section[data-ch]::before{top:22px}
   .section[data-ch]::after{top:34px}
-  #heroGlow,#heroFluid{opacity:.7}
+  /* 手机端基准亮度由 script.js 写入 --glow-fade，这里不再硬编码 opacity */
   .eyebrow{letter-spacing:.22em;gap:10px}
   .eyebrow-line{width:28px}
   .hero-window{margin-top:44px}

@@ -351,6 +351,16 @@
   var progress = $('#scrollProgress');
   var ticking = false;
   function onScroll() {
+    /* 首屏光晕可见度：滚过第一屏后线性淡出，下面各屏完全安静。
+       ?glow=page 可回到整页版；阈值与 fluid.js 的 inFirstScreen 保持一致。 */
+    var pageWide = /[?&]glow=page/.test(location.search);
+    var vh = window.innerHeight || 800;
+    var yy = window.scrollY || document.documentElement.scrollTop || 0;
+    var lead = vh * 0.12;
+    var fade = pageWide ? 1 : Math.max(0, Math.min(1,
+      1 - Math.max(0, yy - lead) / Math.max(1, vh * 0.72)));
+    document.documentElement.style.setProperty('--glow-fade',
+      (fade * (window.innerWidth <= 760 ? 0.7 : 1)).toFixed(3));
     if (ticking) return;
     ticking = true;
     requestAnimationFrame(function () {
@@ -364,6 +374,7 @@
     });
   }
   window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
   onScroll();
 
   var navToggle = $('#navToggle');
@@ -595,13 +606,13 @@
       /* 待机呼吸光：右下菱形中心，指针进入后平滑让位 */
       var ix = W * (W < 620 ? .72 : .70) + Math.sin(t * .23) * W * .045;
       var iy = H * .42 + Math.cos(t * .18) * H * .055;
-      var iR = (W < 620 ? 200 : 320) * (1 + Math.sin(t * .31) * .06);
+      var iR = (W < 620 ? 150 : 230) * (1 + Math.sin(t * .31) * .06);
       var iA = .78 * (1 - glow.fade);
       if (iA > .01) core(ix, iy, iR, iA, 0, 0);
 
       /* 跟随指针的主光团 */
       if (glow.has && glow.fade > .01) {
-        core(glow.x, glow.y, (W < 620 ? 200 : 320) + glow.energy * 48,
+        core(glow.x, glow.y, (W < 620 ? 150 : 220) + glow.energy * 32,
              glow.fade, glow.energy, glow.sp);
       }
       octx.globalAlpha = 1;
@@ -614,8 +625,8 @@
       var dt = lastTs ? Math.min(.05, (ts - lastTs) / 1000) : 1 / 60;
       lastTs = ts;
       frame++;
-      /* 全视口常驻，只按标签页可见性暂停 */
-      near = !document.hidden;
+      /* 只在首屏推进；下面各屏由 --glow-fade 隐藏，不再空跑 */
+      near = !document.hidden && (window.scrollY || 0) < (window.innerHeight || 800) * 0.84;
       if (!near) return;
       update(dt);
       draw();
@@ -633,10 +644,8 @@
       if (reduceMotion) draw();
     });
     window.addEventListener('resize', resize, { passive: true });
-    if (window.ResizeObserver) {
-      var ro = new ResizeObserver(function () { resize(); });
-      ro.observe(hero);
-    }
+    /* 画布尺寸只取决于视口，resize 监听已足够；不再观察 hero，
+       避免语言切换改变 hero 高度时重复重建，也修掉未定义的 hero 引用。 */
     document.addEventListener('ic:theme', function () {
       pal = palette();
       buildSprites();
@@ -653,7 +662,7 @@
       window.__hero = {
         tick: function (n) { for (var i = 0; i < (n || 1); i++) { update(1 / 60); draw(); } },
         move: function (u, v) {
-          var r = hero.getBoundingClientRect();
+          var r = canvas.getBoundingClientRect();
           onMove({ clientX: r.left + r.width * u, clientY: r.top + r.height * v });
         },
         palette: function () { return pal; },

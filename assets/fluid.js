@@ -34,21 +34,32 @@
   var headless = debugMode || Boolean(navigator.webdriver) || /HeadlessChrome/.test(navigator.userAgent);
 
   /* ---------- 参数：与参考站保持一致，只调整颜色与待机策略 ---------- */
-  var CELLS_ON_LONG_SIDE = 256;
-  var BRUSH_RADIUS = 0.3 * 0.16 * CELLS_ON_LONG_SIDE;   /* 放大笔刷，光团更弥散 */
-  var IMPULSE = 0.075;                 /* 减小冲量，染料不再被推散到全屏 */
+  var CELLS_ON_LONG_SIDE = 320;      /* 提高网格密度：同样的笔刷在屏幕上更小、边缘更细 */
+  var BRUSH_RADIUS = 0.215 * 0.16 * CELLS_ON_LONG_SIDE; /* 收小笔刷：跟随光团直径约缩小三成 */
+  var IMPULSE = 0.058;                 /* 冲量再收：染料不被速度推成长带 */
   var MAX_STAMPS = 16;
   var STAMP_SPACING = Math.max(0.004 * CELLS_ON_LONG_SIDE, BRUSH_RADIUS * 0.6);
   var PRESSURE_ITERATIONS = 10;
   var PRESSURE_DECAY = 0.8;
   var VELOCITY_FADE = 4 * Math.pow(0.05 / 4, 0.6);
-  var DYE_FADE = 1.9;                 /* 全屏画布下加快消散，避免染料堆成亮盘 */
+  var DYE_FADE = 2.5;                 /* 快速消散：拖尾变短，只剩鼠标附近一小团光 */
   var CYCLE_PER_STAMP = 0.006;
   var CYCLE_PER_SECOND = 0.06;
   var AUTO_PATH_SPEED = 0.42;
   var RIPPLE_SECONDS = 1.6;
   var MAX_PIXEL_RATIO = 1.5;
   var IDLE_AFTER_MS = 2600;      /* 无鼠标 2.6s 后自动流动，静态首屏也有光 */
+
+  /* ---------- 首屏范围 ----------
+     画布仍 fixed 覆盖整个视口（首屏内光团能跟到任意位置、不被容器裁切），
+     但只在第一屏推进与显示：滚过 0.84 屏后停止注入，由 --glow-fade 淡出。
+     ?glow=page 可退回 v13 的整页跟随版。 */
+  var pageWide = /[?&]glow=page/.test(location.search);
+  var FADE_END = 0.84;
+  function inFirstScreen() {
+    if (pageWide) return true;
+    return (window.scrollY || 0) < (window.innerHeight || 800) * FADE_END;
+  }
 
   /* 三色循环沿用参考站的 Oklab 插值机制。深色照搬它的高饱和蓝；
      浅色用 LOGO 正红的橙红延伸：白底上只染色不发亮，所以三色收在
@@ -481,8 +492,8 @@
   function autoPathPoint(seconds) {
     var t = seconds * AUTO_PATH_SPEED;
     return {
-      x: gridWidth * (0.50 + 0.34 * Math.sin(t * 1.1) * Math.cos(t * 0.37)),
-      y: gridHeight * (0.50 + 0.32 * Math.sin(t * 0.83 + 1.3) * Math.cos(t * 0.29 + 0.6))
+      x: gridWidth * (0.60 + 0.22 * Math.sin(t * 1.1) * Math.cos(t * 0.37)),
+      y: gridHeight * (0.50 + 0.24 * Math.sin(t * 0.83 + 1.3) * Math.cos(t * 0.29 + 0.6))
     };
   }
   var autoSeconds = Math.random() * 100;
@@ -528,6 +539,7 @@
     if (!raf && !reduceMotion && !headless && near && !document.hidden) raf = requestAnimationFrame(tick);
   }
   function movePointer(clientX, clientY) {
+    if (!inFirstScreen()) return;   /* 离开首屏后不再注入染料 */
     var rect = canvas.getBoundingClientRect();
     var inside = clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
     var now = performance.now();
@@ -573,8 +585,8 @@
     var dt = lastFrame === null ? 1 / 60 : Math.min((now - lastFrame) / 1000, 1 / 30);
     lastFrame = now;
     frames++;
-    /* 画布 fixed 覆盖整个视口，页面任何滚动位置都可见 */
-    near = !document.hidden;
+    /* 只在首屏推进；下面各屏光晕已淡出，不再空跑 GPU */
+    near = !document.hidden && inFirstScreen();
     if (!near) return;
     advance(dt, now, true);
   }
@@ -587,7 +599,7 @@
     var warmFrames = reduceMotion ? 26 : 34;
     for (var q = 0; q < warmFrames; q++) {
       var ang = q / warmFrames * Math.PI * 3.2;
-      var rr = 6 + q * 0.85;
+      var rr = 4 + q * 0.38;
       stamp(gridWidth * 0.70 + Math.cos(ang) * rr, gridHeight * 0.46 + Math.sin(ang) * rr,
             Math.cos(ang) * 10, Math.sin(ang) * 10);
       step(1 / 60);
@@ -636,7 +648,9 @@
       state: function () {
         return { W: canvas.clientWidth, H: canvas.clientHeight, grid: [gridWidth, gridHeight],
                  frames: frames, pointer: Boolean(pointer), auto: coarse || (performance.now() - lastActivity >= IDLE_AFTER_MS),
-                 stamps: pendingStamps.length, visible: canvas.width > 0, reduce: reduceMotion };
+                 stamps: pendingStamps.length, visible: canvas.width > 0, reduce: reduceMotion,
+                 firstScreen: inFirstScreen(),
+                 fade: getComputedStyle(root).getPropertyValue('--glow-fade').trim() };
       },
       pixels: function () {
         render();
