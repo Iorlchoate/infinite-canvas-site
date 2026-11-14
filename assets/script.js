@@ -435,8 +435,8 @@
 
   /* =====================================================================
      3. 首页粒子场 —— 全站唯一的鼠标跟随动效
-     科技感来自硬边光点、近邻连线、数据包与结构化准星读数。
-     刻意不用柔化烟体：连续渐变的烟会滑回水墨感。
+     以 LOGO 的三层菱形为骨架：分层粒子 / 近邻连线 / 流动数据包 /
+     指针感应域 / 轨迹余烬。只用石墨灰 + 正红，不引入第三种彩色。
      ===================================================================== */
   (function heroParticles() {
     var hero = $('#hero');
@@ -447,21 +447,21 @@
     if (!ctx) return;
 
     var W = 0, H = 0, dpr = 1, t = 0, frame = 0, lastTs = 0, near = true, raf = 0, scanY = 0;
-    var parts = [], pairs = [], rings = [], trail = [];
-    var ptr = { x: -999, y: -999, has: false, lastRing: 0 };
+    var parts = [], pairs = [], embers = [];
+    var ptr = { x: -999, y: -999, has: false, speed: 0 };
     var pal = palette();
 
     function palette() {
       var dark = root.getAttribute('data-theme') === 'dark';
       return {
-        dot: dark ? [94, 234, 212] : [13, 148, 136],
-        sig: dark ? [94, 234, 212] : [13, 148, 136],
-        line: dark ? [94, 234, 212] : [17, 24, 39],
-        coral: [242, 104, 92],
-        dotA: dark ? .72 : .60,
-        linkA: dark ? .28 : .17,
-        gridA: dark ? .075 : .06,
-        glow: dark ? 9 : 0
+        far:    dark ? [104, 116, 134] : [126, 136, 150],
+        node:   dark ? [206, 214, 226] : [60, 65, 73],
+        line:   dark ? [176, 188, 204] : [60, 65, 73],
+        ghost:  dark ? [188, 200, 216] : [60, 65, 73],
+        accent: dark ? [255, 107, 96] : [239, 68, 68],
+        dotA:   dark ? .86 : .80,
+        linkA:  dark ? .32 : .26,
+        glow:   dark ? 9 : 0
       };
     }
     function rgba(c, a) {
@@ -469,22 +469,32 @@
         Math.max(0, Math.min(1, a)).toFixed(3) + ')';
     }
     function pad(v) { return ('0000' + Math.max(0, Math.round(v))).slice(-4); }
-    function edge(y) { return Math.max(0, Math.min(1, y / 90, (H - y) / 90)); }
+    function edge(y) { return Math.max(0, Math.min(1, y / 80, (H - y) / 80)); }
+    /* 左侧标题 / 正文区连续压暗，保证文字始终压得住底纹 */
+    function veil(x, y) {
+      var u = Math.max(0, 1 - Math.abs(x - W * .29) / (W * .36));
+      var v = Math.max(0, 1 - Math.abs(y - H * .34) / (H * .38));
+      return 1 - .62 * u * v;
+    }
 
     function seed() {
-      var n = Math.round(W * H / 13500);
-      n = Math.max(38, Math.min(W < 620 ? 58 : 118, n));
+      var n = Math.round(W * H / 11500);
+      n = Math.max(44, Math.min(W < 620 ? 66 : 148, n));
       parts = [];
       for (var i = 0; i < n; i++) {
+        var r = Math.random();
+        var layer = r < .32 ? 0 : (r < .87 ? 1 : 2);
         parts.push({
           x: Math.random() * W,
           y: Math.random() * H,
-          vx: (Math.random() - .5) * 11,
-          vy: (Math.random() - .5) * 11,
-          s: Math.random() < .18 ? 2.4 : 1.5,
-          a: .55 + Math.random() * .45,
+          vx: (Math.random() - .5) * (layer === 0 ? 7 : 12),
+          vy: (Math.random() - .5) * (layer === 0 ? 7 : 12),
+          layer: layer,
+          s: layer === 0 ? 1.3 : (layer === 1 ? 2.0 : 2.7),
+          a: layer === 0 ? .44 : (layer === 1 ? .82 : 1),
           ph: Math.random() * 6.283,
-          anchor: Math.random() < .1
+          anchor: layer === 2,
+          spin: Math.random() < .5 ? -1 : 1
         });
       }
     }
@@ -506,22 +516,30 @@
       var r = hero.getBoundingClientRect();
       var x = e.clientX - r.left, y = e.clientY - r.top;
       if (x < -120 || y < -120 || x > W + 120 || y > H + 120) {
-        if (ptr.has) { ptr.has = false; trail.length = 0; }
+        if (ptr.has) { ptr.has = false; embers.length = 0; }
         if (coord) coord.textContent = 'X 0000 / Y 0000';
         if (reduceMotion) draw();
         return;
       }
+      var prev = ptr.has ? { x: ptr.x, y: ptr.y } : null;
+      var jump = prev ? Math.hypot(x - prev.x, y - prev.y) : 0;
       ptr.x = x; ptr.y = y; ptr.has = true;
-      /* 快速甩动 / 程序化跳点会拉出一条横跨标题的长线：超出阈值就重新起笔 */
-      var last = trail.length ? trail[trail.length - 1] : null;
-      if (last && Math.hypot(x - last.x, y - last.y) > 90) trail.length = 0;
-      trail.push({ x: x, y: y });
-      if (trail.length > 22) trail.shift();
-      var now = performance.now();
-      if (now - ptr.lastRing > 190) {
-        rings.push({ x: x, y: y, r: 6, a: .8 });
-        ptr.lastRing = now;
-        if (rings.length > 7) rings.shift();
+      ptr.speed = Math.min(1, ptr.speed * .55 + jump / 95);
+      /* 轨迹改成余烬粒子：快速甩动不再拉出跨屏长线 */
+      if (prev && jump < 90) {
+        var steps = Math.min(4, Math.max(1, Math.round(jump / 10)));
+        for (var k = 1; k <= steps; k++) {
+          var u = k / steps;
+          embers.push({
+            x: prev.x + (x - prev.x) * u + (Math.random() - .5) * 4,
+            y: prev.y + (y - prev.y) * u + (Math.random() - .5) * 4,
+            vx: (Math.random() - .5) * 18,
+            vy: (Math.random() - .5) * 18 - 7,
+            life: 1,
+            s: Math.random() < .25 ? 2.1 : 1.25
+          });
+        }
+        if (embers.length > 190) embers.splice(0, embers.length - 190);
       }
       if (coord) coord.textContent = 'X ' + pad(x) + ' / Y ' + pad(y);
       if (reduceMotion) draw();
@@ -533,33 +551,113 @@
       for (i = 0; i < parts.length; i++) {
         p = parts[i];
         p.x += p.vx * dt;
-        p.y += (p.vy + Math.sin(t * .6 + p.ph) * 2.4) * dt;
+        p.y += (p.vy + Math.sin(t * .6 + p.ph) * (p.layer === 0 ? 1.6 : 2.8)) * dt;
         if (ptr.has) {
           var dx = ptr.x - p.x, dy = ptr.y - p.y;
           var d = Math.sqrt(dx * dx + dy * dy) || 1;
-          if (d < 195) {
-            var f = 1 - d / 195;
-            /* 朝指针吸附 + 切向旋转，聚成一张临时星图；太近则反推，避免堆成一点 */
-            var pull = d < 30 ? -f * 90 : f * 135;
-            p.x += (dx / d * pull - dy / d * f * 68) * dt;
-            p.y += (dy / d * pull + dx / d * f * 68) * dt;
+          if (d < 240) {
+            var f = 1 - d / 240;
+            /* 拉向半径 ~72 的环并切向旋转，形成临时星图，不会堆成一点 */
+            var pull = ((d - 72) / d) * 165 * f;
+            var swirl = 112 * f * p.spin;
+            p.x += (dx / d * pull - dy / d * swirl) * dt;
+            p.y += (dy / d * pull + dx / d * swirl) * dt;
           }
         }
         if (p.x < -8) p.x = W + 8; else if (p.x > W + 8) p.x = -8;
         if (p.y < -8) p.y = H + 8; else if (p.y > H + 8) p.y = -8;
       }
-      for (i = rings.length - 1; i >= 0; i--) {
-        rings[i].r += dt * 105;
-        rings[i].a -= dt * .85;
-        if (rings[i].a <= 0) rings.splice(i, 1);
+      for (i = embers.length - 1; i >= 0; i--) {
+        var e = embers[i];
+        e.x += e.vx * dt; e.y += e.vy * dt;
+        e.vx *= .96; e.vy = e.vy * .96 + 5 * dt;
+        e.life -= dt * .95;
+        if (e.life <= 0) embers.splice(i, 1);
       }
-      if (!ptr.has && trail.length) trail.shift();
-      scanY = (scanY + dt * 46) % (H + 180);
+      ptr.speed *= Math.pow(.12, dt);
+      scanY = (scanY + dt * 42) % (H + 160);
+    }
+
+    /* ---------- 背景骨架：三层菱形，直接取自 LOGO ---------- */
+    function diamond(cx, cy, rx, ry, stroke, lw) {
+      ctx.strokeStyle = stroke; ctx.lineWidth = lw;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - ry); ctx.lineTo(cx + rx, cy);
+      ctx.lineTo(cx, cy + ry); ctx.lineTo(cx - rx, cy);
+      ctx.closePath(); ctx.stroke();
+    }
+    function drawBackdrop() {
+      var mobile = W < 620;
+      var cx = W * (mobile ? .92 : .76), cy = H * .44;
+      var rx = Math.min(W * (mobile ? .21 : .27), H * .55, 320);
+      var ry = rx * .46;
+      var breathe = 1 + Math.sin(t * .32) * .03;
+      /* 手机上几何骨架整体压淡，避免红色菱形边斜穿标题 */
+      var mf = mobile ? .34 : 1;
+      for (var i = 0; i < 3; i++) {
+        var yy = cy + (i - 1) * ry * .63;
+        var a = (i === 2 ? .16 : .11) * veil(cx, yy) * mf;
+        diamond(cx, yy, rx * breathe, ry * breathe,
+          rgba(i === 2 ? pal.accent : pal.ghost, a), 1);
+      }
+      /* 缓慢旋转的虚线刻度环 */
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(t * .055);
+      ctx.setLineDash([2, 9]);
+      ctx.strokeStyle = rgba(pal.ghost, .14 * veil(cx, cy) * mf);
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(0, 0, rx * .84, 0, 6.2832); ctx.stroke();
+      ctx.setLineDash([]);
+      for (var k = 0; k < 12; k++) {
+        var ang = k * Math.PI / 6;
+        var r0 = rx * .84;
+        ctx.strokeStyle = rgba(pal.ghost, (k % 3 === 0 ? .22 : .10) * veil(cx, cy) * mf);
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ang) * (r0 - 5), Math.sin(ang) * (r0 - 5));
+        ctx.lineTo(Math.cos(ang) * (r0 + (k % 3 === 0 ? 8 : 4)), Math.sin(ang) * (r0 + (k % 3 === 0 ? 8 : 4)));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawTicks() {
+      var step = W < 620 ? 64 : 80;
+      ctx.lineWidth = 1;
+      for (var y = step * .5; y < H; y += step) {
+        for (var x = step * .5; x < W; x += step) {
+          var hot = ptr.has ? Math.max(0, 1 - Math.hypot(x - ptr.x, y - ptr.y) / 180) : 0;
+          ctx.strokeStyle = rgba(hot > .1 ? pal.accent : pal.ghost,
+            (.16 + hot * .34) * veil(x, y));
+          ctx.beginPath();
+          ctx.moveTo(x - 2, y); ctx.lineTo(x + 2, y);
+          ctx.moveTo(x, y - 2); ctx.lineTo(x, y + 2);
+          ctx.stroke();
+        }
+      }
+    }
+
+    function drawScan() {
+      if (scanY < 40 || scanY > H) return;
+      var band = 24;
+      var g = ctx.createLinearGradient(0, scanY - band, 0, scanY);
+      g.addColorStop(0, rgba(pal.ghost, 0));
+      g.addColorStop(1, rgba(pal.ghost, .035));
+      ctx.fillStyle = g;
+      ctx.fillRect(0, scanY - band, W, band);
+      var gh = ctx.createLinearGradient(0, 0, W, 0);
+      gh.addColorStop(0, rgba(pal.ghost, 0));
+      gh.addColorStop(.1, rgba(pal.ghost, .18));
+      gh.addColorStop(.9, rgba(pal.ghost, .18));
+      gh.addColorStop(1, rgba(pal.ghost, 0));
+      ctx.strokeStyle = gh;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, scanY); ctx.lineTo(W, scanY); ctx.stroke();
     }
 
     function buildPairs() {
       pairs.length = 0;
-      var lim = W < 620 ? 96 : 122, lim2 = lim * lim;
+      var lim = W < 620 ? 98 : 126, lim2 = lim * lim;
       var deg = new Uint8Array(parts.length);
       for (var i = 0; i < parts.length; i++) {
         if (deg[i] >= 3) continue;
@@ -570,46 +668,11 @@
           var dx = a.x - b.x, dy = a.y - b.y;
           var d2 = dx * dx + dy * dy;
           if (d2 > lim2) continue;
-          var k = 1 - Math.sqrt(d2) / lim;
-          pairs.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y, k: k });
+          pairs.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y, k: 1 - Math.sqrt(d2) / lim });
           deg[i]++; deg[j]++;
           if (deg[i] >= 3) break;
         }
       }
-    }
-
-    function drawTicks() {
-      var step = W < 620 ? 62 : 78;
-      ctx.lineWidth = 1;
-      for (var y = step * .5; y < H; y += step) {
-        for (var x = step * .5; x < W; x += step) {
-          var hot = ptr.has ? Math.max(0, 1 - Math.hypot(x - ptr.x, y - ptr.y) / 170) : 0;
-          ctx.strokeStyle = rgba(pal.sig, pal.gridA + hot * .22);
-          ctx.beginPath();
-          ctx.moveTo(x - 2, y); ctx.lineTo(x + 2, y);
-          ctx.moveTo(x, y - 2); ctx.lineTo(x, y + 2);
-          ctx.stroke();
-        }
-      }
-    }
-
-    function drawScan() {
-      if (scanY < 48 || scanY > H) return;
-      var band = 26;
-      var g = ctx.createLinearGradient(0, scanY - band, 0, scanY);
-      g.addColorStop(0, rgba(pal.sig, 0));
-      g.addColorStop(1, rgba(pal.sig, .04));
-      ctx.fillStyle = g;
-      ctx.fillRect(0, scanY - band, W, band);
-      /* 横向渐隐，避免两端出现硬边 */
-      var gh = ctx.createLinearGradient(0, 0, W, 0);
-      gh.addColorStop(0, rgba(pal.sig, 0));
-      gh.addColorStop(.1, rgba(pal.sig, .22));
-      gh.addColorStop(.9, rgba(pal.sig, .22));
-      gh.addColorStop(1, rgba(pal.sig, 0));
-      ctx.strokeStyle = gh;
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(0, scanY); ctx.lineTo(W, scanY); ctx.stroke();
     }
 
     function drawLinks() {
@@ -617,22 +680,29 @@
       ctx.lineWidth = 1;
       for (var i = 0; i < pairs.length; i++) {
         var l = pairs[i];
-        var my = (l.ay + l.by) / 2;
-        var nearP = ptr.has
-          ? Math.max(0, 1 - Math.hypot((l.ax + l.bx) / 2 - ptr.x, my - ptr.y) / 200) : 0;
-        ctx.strokeStyle = rgba(nearP > .1 ? pal.sig : pal.line,
-          (pal.linkA * l.k + nearP * .3) * edge(my));
-        ctx.beginPath();
-        ctx.moveTo(l.ax, l.ay); ctx.lineTo(l.bx, l.by);
-        ctx.stroke();
-        /* 少量数据包沿连线流动：硬边小方块，不做柔化 */
-        if (i % 5 === 0) {
-          var p = (t * .34 + i * .173) % 1;
-          var px = l.ax + (l.bx - l.ax) * p, py = l.ay + (l.by - l.ay) * p;
-          if (pal.glow) { ctx.shadowColor = rgba(pal.sig, 1); ctx.shadowBlur = pal.glow; }
-          ctx.fillStyle = rgba(pal.sig, (.5 + nearP * .5) * edge(py));
-          ctx.fillRect(px - 1.8, py - 1.8, 3.6, 3.6);
-          ctx.shadowBlur = 0;
+        var mx = (l.ax + l.bx) / 2, my = (l.ay + l.by) / 2;
+        var hot = ptr.has ? Math.max(0, 1 - Math.hypot(mx - ptr.x, my - ptr.y) / 195) : 0;
+        var v = edge(my) * veil(mx, my);
+        ctx.strokeStyle = rgba(hot > .15 ? pal.accent : pal.line,
+          (pal.linkA * l.k + hot * .5) * v);
+        ctx.beginPath(); ctx.moveTo(l.ax, l.ay); ctx.lineTo(l.bx, l.by); ctx.stroke();
+        /* 数据包带三段硬边拖尾；静态态也留少量正红跳色 */
+        if (i % 4 === 0) {
+          var red = hot > .15 || i % 12 === 0;
+          var ph = (t * (.28 + hot * .32) + i * .137) % 1;
+          for (var q = 0; q < 3; q++) {
+            var u = ph - q * .028;
+            if (u < 0) continue;
+            var px = l.ax + (l.bx - l.ax) * u, py = l.ay + (l.by - l.ay) * u;
+            var aa = (.78 - q * .23) * (1 + hot * .35) * edge(py) * veil(px, py);
+            if (pal.glow && hot > .5 && q === 0) {
+              ctx.shadowColor = rgba(pal.accent, 1); ctx.shadowBlur = pal.glow;
+            }
+            ctx.fillStyle = rgba(red ? pal.accent : pal.node, aa);
+            var sz = 3.4 - q * .85;
+            ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
+            ctx.shadowBlur = 0;
+          }
         }
       }
     }
@@ -640,84 +710,132 @@
     function drawParts() {
       for (var i = 0; i < parts.length; i++) {
         var p = parts[i];
-        var pulse = .78 + Math.sin(t * 1.5 + p.ph) * .22;
-        var hot = ptr.has ? Math.max(0, 1 - Math.hypot(p.x - ptr.x, p.y - ptr.y) / 185) : 0;
-        var a = (pal.dotA * p.a * pulse + hot * .42) * edge(p.y);
-        var s = p.s * (1 + hot * .5);
-        ctx.fillStyle = rgba(hot > .35 ? pal.sig : pal.dot, a);
-        if (pal.glow && hot > .5) { ctx.shadowColor = rgba(pal.sig, 1); ctx.shadowBlur = pal.glow; }
+        var pulse = .82 + Math.sin(t * 1.6 + p.ph) * .18;
+        var hot = ptr.has ? Math.max(0, 1 - Math.hypot(p.x - ptr.x, p.y - ptr.y) / 190) : 0;
+        var a = (pal.dotA * p.a * pulse + hot * .6) * edge(p.y) * veil(p.x, p.y);
+        var s = p.s * (1 + hot * .55);
+        var col = hot > .32 ? pal.accent : (p.layer === 0 ? pal.far : pal.node);
+        ctx.fillStyle = rgba(col, a);
+        if (pal.glow && hot > .6) {
+          ctx.shadowColor = rgba(pal.accent, 1); ctx.shadowBlur = pal.glow;
+        }
         ctx.fillRect(p.x - s, p.y - s, s * 2, s * 2);
         ctx.shadowBlur = 0;
         if (p.anchor) {
-          ctx.strokeStyle = rgba(pal.sig, a * .5);
+          /* 锚点画小菱形，呼应 LOGO 的层叠形 */
+          var g = s + 4;
+          ctx.strokeStyle = rgba(hot > .32 ? pal.accent : pal.ghost, a * .6);
           ctx.lineWidth = 1;
-          ctx.strokeRect(p.x - s - 3, p.y - s - 3, (s + 3) * 2, (s + 3) * 2);
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y - g); ctx.lineTo(p.x + g, p.y);
+          ctx.lineTo(p.x, p.y + g); ctx.lineTo(p.x - g, p.y);
+          ctx.closePath(); ctx.stroke();
         }
+      }
+    }
+
+    /* ---------- 指针感应域 ---------- */
+    function drawField() {
+      if (!ptr.has) return;
+      var R = 132 + ptr.speed * 72;
+      var v = veil(ptr.x, ptr.y);
+      ctx.save();
+      ctx.translate(ptr.x, ptr.y);
+      /* 雷达扫描扇形：一条主射线 + 递减尾迹，硬边线，不做柔化 */
+      var sa = t * 1.15;
+      for (var q = 0; q < 6; q++) {
+        var ang2 = sa - q * .055;
+        ctx.strokeStyle = rgba(pal.accent, (.46 - q * .065) * v);
+        ctx.lineWidth = q === 0 ? 1.2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(ang2) * R * .9, Math.sin(ang2) * R * .9);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = rgba(pal.accent, .30 * v);
+      ctx.beginPath(); ctx.arc(0, 0, R * .74, sa - .30, sa); ctx.stroke();
+      ctx.rotate(t * .12);
+      ctx.setLineDash([3, 8]);
+      ctx.strokeStyle = rgba(pal.accent, .46 * v);
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, 6.2832); ctx.stroke();
+      ctx.setLineDash([]);
+      for (var k = 0; k < 8; k++) {
+        var ang = k * Math.PI / 4;
+        ctx.strokeStyle = rgba(pal.accent, .38 * v);
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ang) * (R - 7), Math.sin(ang) * (R - 7));
+        ctx.lineTo(Math.cos(ang) * (R + 4), Math.sin(ang) * (R + 4));
+        ctx.stroke();
+      }
+      ctx.rotate(-t * .12);
+      ctx.strokeStyle = rgba(pal.accent, .22 * v);
+      ctx.beginPath(); ctx.arc(0, 0, R * .62, 0, 6.2832); ctx.stroke();
+      /* 四角方括号 */
+      var g = R * .82;
+      ctx.strokeStyle = rgba(pal.accent, .62 * v);
+      ctx.beginPath();
+      ctx.moveTo(-g, -g + 8); ctx.lineTo(-g, -g); ctx.lineTo(-g + 8, -g);
+      ctx.moveTo(g - 8, -g); ctx.lineTo(g, -g); ctx.lineTo(g, -g + 8);
+      ctx.moveTo(-g, g - 8); ctx.lineTo(-g, g); ctx.lineTo(-g + 8, g);
+      ctx.moveTo(g - 8, g); ctx.lineTo(g, g); ctx.lineTo(g, g - 8);
+      ctx.stroke();
+      ctx.restore();
+      /* 域内粒子连成星图 */
+      var cnt = 0;
+      ctx.lineWidth = 1;
+      for (var i = 0; i < parts.length && cnt < 14; i++) {
+        var p = parts[i];
+        var d = Math.hypot(p.x - ptr.x, p.y - ptr.y);
+        if (d > R) continue;
+        ctx.strokeStyle = rgba(pal.accent, (1 - d / R) * .72 *
+          edge((p.y + ptr.y) / 2) * veil((p.x + ptr.x) / 2, (p.y + ptr.y) / 2));
+        ctx.beginPath(); ctx.moveTo(ptr.x, ptr.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+        cnt++;
+      }
+    }
+
+    function drawEmbers() {
+      for (var i = 0; i < embers.length; i++) {
+        var e = embers[i];
+        var s = e.s * (.4 + .6 * e.life);
+        ctx.fillStyle = rgba(pal.accent,
+          e.life * .88 * edge(e.y) * veil(e.x, e.y));
+        ctx.fillRect(e.x - s, e.y - s, s * 2, s * 2);
       }
     }
 
     function drawPointer() {
-      /* 指针星图：近邻粒子被连到指针 */
-      if (ptr.has) {
-        var cnt = 0;
-        ctx.lineWidth = 1;
-        for (var i = 0; i < parts.length && cnt < 12; i++) {
-          var p = parts[i];
-          var d = Math.hypot(p.x - ptr.x, p.y - ptr.y);
-          if (d > 200) continue;
-          ctx.strokeStyle = rgba(pal.sig, (1 - d / 200) * .7 * edge((p.y + ptr.y) / 2));
-          ctx.beginPath();
-          ctx.moveTo(ptr.x, ptr.y); ctx.lineTo(p.x, p.y);
-          ctx.stroke();
-          cnt++;
-        }
-      }
-      /* 轨迹：硬线，越旧越淡 */
-      ctx.lineCap = 'round';
-      for (var j = 1; j < trail.length; j++) {
-        var k = j / trail.length;
-        ctx.strokeStyle = rgba(pal.sig, k * k * .55);
-        ctx.lineWidth = .8 + k * 1.9;
-        ctx.beginPath();
-        ctx.moveTo(trail[j - 1].x, trail[j - 1].y);
-        ctx.lineTo(trail[j].x, trail[j].y);
-        ctx.stroke();
-      }
-      rings.forEach(function (r) {
-        ctx.strokeStyle = rgba(pal.sig, Math.max(0, r.a * .55));
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, 6.2832); ctx.stroke();
-      });
       if (!ptr.has) return;
-      /* 准星 + 中心环 + 方括号 */
-      ctx.strokeStyle = rgba(pal.sig, .9);
+      var x = ptr.x, y = ptr.y;
+      ctx.strokeStyle = rgba(pal.ghost, .78);
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(ptr.x - 16, ptr.y); ctx.lineTo(ptr.x - 7, ptr.y);
-      ctx.moveTo(ptr.x + 7, ptr.y); ctx.lineTo(ptr.x + 16, ptr.y);
-      ctx.moveTo(ptr.x, ptr.y - 16); ctx.lineTo(ptr.x, ptr.y - 7);
-      ctx.moveTo(ptr.x, ptr.y + 7); ctx.lineTo(ptr.x, ptr.y + 16);
+      ctx.moveTo(x - 18, y); ctx.lineTo(x - 8, y);
+      ctx.moveTo(x + 8, y); ctx.lineTo(x + 18, y);
+      ctx.moveTo(x, y - 18); ctx.lineTo(x, y - 8);
+      ctx.moveTo(x, y + 8); ctx.lineTo(x, y + 18);
       ctx.stroke();
-      ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 4.5, 0, 6.2832); ctx.stroke();
-      ctx.strokeStyle = rgba(pal.sig, .32);
-      var g = 23;
-      ctx.beginPath();
-      ctx.moveTo(ptr.x - g, ptr.y - g + 7); ctx.lineTo(ptr.x - g, ptr.y - g); ctx.lineTo(ptr.x - g + 7, ptr.y - g);
-      ctx.moveTo(ptr.x + g - 7, ptr.y - g); ctx.lineTo(ptr.x + g, ptr.y - g); ctx.lineTo(ptr.x + g, ptr.y - g + 7);
-      ctx.moveTo(ptr.x - g, ptr.y + g - 7); ctx.lineTo(ptr.x - g, ptr.y + g); ctx.lineTo(ptr.x - g + 7, ptr.y + g);
-      ctx.moveTo(ptr.x + g - 7, ptr.y + g); ctx.lineTo(ptr.x + g, ptr.y + g); ctx.lineTo(ptr.x + g, ptr.y + g - 7);
-      ctx.stroke();
-      /* 指针核心一点桃红，呼应 LOGO 跳色 */
-      ctx.fillStyle = rgba(pal.coral, .85);
-      ctx.fillRect(ptr.x - 1.5, ptr.y - 1.5, 3, 3);
+      /* 中心菱形（LOGO 形）+ 正红核心 */
+      ctx.strokeStyle = rgba(pal.accent, .9);
+      diamond(x, y, 6, 2.8, rgba(pal.accent, .9), 1);
+      ctx.fillStyle = rgba(pal.accent, .95);
+      ctx.fillRect(x - 1.4, y - 1.4, 2.8, 2.8);
+      /* 坐标读数 */
+      ctx.fillStyle = rgba(pal.ghost, .65);
+      ctx.font = '9px ui-monospace,Menlo,Consolas,monospace';
+      ctx.fillText('X ' + pad(x) + '  Y ' + pad(y), x + 26, y + 22);
     }
 
     function draw() {
       ctx.clearRect(0, 0, W, H);
+      drawBackdrop();
       drawTicks();
       drawScan();
       drawLinks();
       drawParts();
+      drawField();
+      drawEmbers();
       drawPointer();
     }
 
@@ -726,7 +844,7 @@
       var dt = lastTs ? Math.min(.05, (ts - lastTs) / 1000) : 1 / 60;
       lastTs = ts;
       frame++;
-      /* 用视口距离判断活性，IntersectionObserver 在 iframe / 程序化滚动里会误判 */
+      /* 用视口距离判断活性，IntersectionObserver 在 iframe 内会误判 */
       if ((frame % 6) === 0) {
         var r = hero.getBoundingClientRect();
         var vh = window.innerHeight || document.documentElement.clientHeight || 800;
@@ -740,11 +858,11 @@
     window.addEventListener('pointermove', onMove, { passive: true });
     window.addEventListener('pointerdown', function (e) {
       onMove(e);
-      if (ptr.has) rings.push({ x: ptr.x, y: ptr.y, r: 3, a: 1 });
+      if (ptr.has) ptr.speed = 1;
       if (reduceMotion) draw();
     }, { passive: true });
     document.addEventListener('pointerleave', function () {
-      ptr.has = false; trail.length = 0;
+      ptr.has = false; embers.length = 0;
       if (coord) coord.textContent = 'X 0000 / Y 0000';
       if (reduceMotion) draw();
     });
@@ -770,9 +888,10 @@
           var r = hero.getBoundingClientRect();
           onMove({ clientX: r.left + r.width * u, clientY: r.top + r.height * v });
         },
+        palette: function () { return pal; },
         state: function () {
           return { W: W, H: H, parts: parts.length, pairs: pairs.length,
-                   rings: rings.length, trail: trail.length, visible: canvas.width > 0 };
+                   embers: embers.length, visible: canvas.width > 0 };
         },
         pixels: function () {
           var d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;

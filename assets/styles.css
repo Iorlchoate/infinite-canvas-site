@@ -10,23 +10,26 @@
   --ink-hover:#33363c;
   --slate:#64748b;
   --ash:#94a3b8;
-  --smoke:#a3a6af;
   --line:#e2e8f0;
   --line-soft:#edf0f3;
   --line-strong:#d5dce5;
   --shadow:0 2px 15px rgba(0,0,0,.02);
   /* 布局里用到的半透明层，深色下要换 */
   --header-bg:rgba(255,255,255,.94);
-  --vignette-mid:rgba(255,255,255,.80);
   --grid-dot:rgba(17,24,39,.085);
   --wire:rgba(17,24,39,.26);
   --skeleton:rgba(17,24,39,.13);
-  --peach-inner:rgba(93,42,26,.08);
-  --peach-chip:rgba(255,255,255,.42);
-  /* 唯一彩色：暖桃色，全站只用在下载主卡 */
-  --peach:#fbe1d1;
-  --sienna:#5d2a1a;
-  --peach-line:rgba(93,42,26,.16);
+  /* 唯一彩色体系，与 LOGO 完全同源：石墨灰 + 正红 + 浅雾灰纸面 */
+  --graphite:#3c4149;            /* LOGO 深灰：连线 / 图标 / 编号 / 数据层 */
+  --accent:#ef4444;              /* LOGO 正红：只做小面积跳色 */
+  --accent-soft:rgba(239,68,68,.12);
+  --accent-wash:rgba(239,68,68,.05);
+  --accent-line:rgba(239,68,68,.18);
+  --chip:rgba(60,65,73,.055);
+  --logo-bg:#f5f6f8;             /* LOGO 自带底片，深浅主题都保持 */
+  --logo-edge:#dce0e6;
+  --logo-gray:#3c4149;
+  --logo-red:#ef4444;
   --radius:24px;
   --wrap:1180px;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
@@ -35,24 +38,20 @@
   /* 系统无衬线：macOS=SF+苹方，Windows=Segoe UI+雅黑；不加载任何外部字体 */
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue","PingFang SC","Hiragino Sans GB","HarmonyOS Sans SC","Microsoft YaHei UI","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Noto Sans SC",Arial,sans-serif;
   --head:var(--serif);          /* 全站标题只认这一个变量；改成 var(--sans) 即可整体切无衬线 */
-  /* 与仓库图标同源的跳色，只在极小的点上出现 */
-  --coral:#f2685c;              /* LOGO 桃红 */
-  --logo:#ef4444;               /* LOGO 红 */
-  --ember:#f97316;              /* 橙，仅一处 */
-  /* 信号色：只用在数据 / 连线 / 状态点上，和桃红 LOGO 分工，不抢品牌色 */
-  --signal:#0d9488;
-  --signal-soft:rgba(13,148,136,.11);
-  --grid-line:rgba(17,24,39,.035);
-  --peach-wash:rgba(251,225,209,.66);
-  --brush:#fbe1d1;               /* 标题笔刷：浅色实心桃，深色改半透明暖光 */
+  /* 极淡坐标网格；标题笔刷用极淡红，与 LOGO 正红同源 */
+  --grid-line:rgba(60,65,73,.035);
+  --brush:rgba(239,68,68,.11);
 }
 /* ---------- 深色主题：同一套令牌反转，彩度整体压低 ---------- */
 html[data-theme="dark"]{
-  --signal:#5eead4;
-  --signal-soft:rgba(94,234,212,.10);
+  --graphite:#c4ccd8;
+  --accent:#ff6b60;
+  --accent-soft:rgba(255,107,96,.14);
+  --accent-wash:rgba(255,107,96,.05);
+  --accent-line:rgba(255,107,96,.22);
+  --chip:rgba(255,255,255,.06);
   --grid-line:rgba(255,255,255,.028);
-  --peach-wash:rgba(243,216,200,.055);
-  --brush:rgba(243,216,200,.17);
+  --brush:rgba(255,107,96,.10);
   --paper:#16181d;
   --fog:#0e1014;
   --mist:#1b1e24;
@@ -60,21 +59,15 @@ html[data-theme="dark"]{
   --ink-hover:#3a4048;
   --slate:#a9b1bc;
   --ash:#7b838f;
-  --smoke:#6b7280;
   --line:#2a2f37;
   --line-soft:#22262d;
   --line-strong:#3a414b;
   --shadow:0 2px 15px rgba(0,0,0,.30);
   --header-bg:rgba(22,24,29,.93);
-  --vignette-mid:rgba(22,24,29,.82);
   --grid-dot:rgba(255,255,255,.10);
   --wire:rgba(255,255,255,.22);
   --skeleton:rgba(255,255,255,.12);
-  --peach-inner:rgba(243,216,200,.10);
-  --peach-chip:rgba(255,255,255,.07);
-  --peach:#33241d;
-  --sienna:#f3d8c8;
-  --peach-line:rgba(243,216,200,.16);
+  /* 深色下不再有整块暖棕：所有卡片底色回到 --paper */
 }
 html.no-cjk-serif{--head:var(--sans)}
 *,*::before,*::after{box-sizing:border-box}
@@ -96,7 +89,7 @@ a{color:inherit;text-decoration:none}
 button{font:inherit;cursor:pointer}
 img{max-width:100%;display:block}
 svg{display:block}
-::selection{background:var(--peach);color:var(--sienna)}
+::selection{background:var(--accent-soft);color:var(--ink)}
 .wrap{width:min(var(--wrap),calc(100% - 48px));margin-inline:auto}
 
 /* 切主题的短暂过渡，只在点击后加 300ms，避免常驻 transition 拖累滚动 */
@@ -109,11 +102,11 @@ html.theme-anim .tool-btn,html.theme-anim .compare-row,html.theme-anim .faq p{
 /* ---------- 层级 / 章节索引 / 进度 ---------- */
 header.site-header,main,.site-footer{position:relative;z-index:1}
 .scroll-progress{position:fixed;top:0;left:0;height:2px;width:0;z-index:60;
-  background:linear-gradient(90deg,var(--signal),var(--logo));box-shadow:0 0 12px var(--signal-soft)}
+  background:linear-gradient(90deg,var(--graphite),var(--accent));box-shadow:0 0 12px var(--accent-soft)}
 /* 左上角的章节号 + 顶部细刻度，给长页面一个技术手册式的节奏 */
 .section{position:relative}
 .section[data-ch]::before{content:attr(data-ch);position:absolute;top:34px;left:0;
-  font:400 10px/1 var(--mono);letter-spacing:.18em;color:var(--signal);
+  font:400 10px/1 var(--mono);letter-spacing:.18em;color:var(--graphite);
   padding:5px 8px;border:1px solid var(--line);border-radius:5px;background:var(--paper)}
 .section[data-ch]::after{content:"";position:absolute;top:46px;left:44px;right:0;height:1px;
   background:linear-gradient(90deg,var(--line),transparent 18%)}
@@ -149,7 +142,7 @@ header.site-header,main,.site-footer{position:relative;z-index:1}
   letter-spacing:.012em;color:var(--ink);margin:0 auto 18px;text-align:center;max-width:24em;text-wrap:balance}
 .section-lead{font-size:16px;line-height:1.95;letter-spacing:.008em;color:var(--slate);
   max-width:32em;margin:0 auto 52px;text-align:center;text-wrap:pretty}
-.badge{display:inline-block;font:400 11px/1 var(--sans);letter-spacing:.1em;padding:8px 12px;border-radius:9999px;background:var(--peach-inner);border:1px solid var(--peach-line);color:var(--sienna)}
+.badge{display:inline-block;font:400 11px/1 var(--sans);letter-spacing:.1em;padding:8px 12px;border-radius:9999px;background:var(--chip);border:1px solid var(--accent-line);color:var(--ink)}
 .chip{display:inline-block;font-size:11.5px;padding:6px 12px;border-radius:9999px;color:var(--slate);background:var(--mist);border:1px solid var(--line-soft)}
 code{font:400 12.5px var(--mono);color:var(--ink);background:var(--mist);padding:2px 6px;border-radius:6px}
 
@@ -158,8 +151,9 @@ code{font:400 12.5px var(--mono);color:var(--ink);background:var(--mist);padding
 .site-header.scrolled{background:var(--header-bg);border-bottom-color:var(--line);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 .header-inner{display:flex;align-items:center;gap:20px;height:76px}
 .brand{display:flex;align-items:center;gap:10px;flex:none}
-.brand-mark{width:30px;height:30px;color:var(--ink);display:grid;place-items:center}
-.brand-mark svg{width:26px;height:26px}
+.brand-mark{width:34px;height:34px;flex:none;border-radius:10px;background:var(--logo-bg);
+  border:1px solid var(--logo-edge);display:grid;place-items:center}
+.brand-mark svg{width:27px;height:27px}
 .brand-name{font-family:var(--head);font-size:19px;font-weight:400;color:var(--ink);letter-spacing:0}
 .brand-en{font:400 9.5px var(--mono);letter-spacing:.14em;color:var(--ash);border-left:1px solid var(--line);padding-left:10px;margin-left:2px}
 /* 英文界面下品牌名本身就是 Infinite Canvas，再挂一条同名小字就成了重复 */
@@ -219,8 +213,8 @@ html[data-theme="dark"] .ico-moon{display:none}
 .window-tabs span.on{background:var(--ink);color:var(--paper)}
 .window-body{height:420px;display:flex}
 .mini-side{width:140px;flex:none;padding:16px 10px;border-right:1px solid var(--line-soft);background:var(--paper)}
-.mini-logo{width:22px;height:22px;color:var(--ink);margin:0 0 22px 10px}
-.mini-logo svg{width:22px;height:22px}
+.mini-logo{width:24px;height:24px;color:var(--graphite);margin:0 0 22px 8px}
+.mini-logo svg{width:24px;height:24px}
 .mini-item{display:flex;align-items:center;gap:9px;font-size:10.5px;color:var(--slate);padding:8px 10px;border-radius:999px;margin-bottom:4px}
 .mini-item i{width:9px;height:9px;border:1px solid currentColor;border-radius:2px;flex:none;opacity:.7}
 .mini-item.active{background:var(--ink);color:var(--paper)}
@@ -256,7 +250,7 @@ html[data-theme="dark"] .ico-moon{display:none}
 .canvas-cta{position:absolute;right:16px;bottom:18px;display:flex;align-items:center;gap:8px;
   background:var(--ink);color:var(--paper);border-radius:999px;padding:10px 22px;
   font-size:10.5px;font-weight:600;letter-spacing:.02em;box-shadow:0 6px 18px rgba(17,24,39,.14)}
-.canvas-cta i{width:5px;height:5px;border-radius:50%;background:var(--ember);display:block}
+.canvas-cta i{width:5px;height:5px;border-radius:50%;background:var(--accent);display:block}
 
 /* ---------- 数据 / 对比 ---------- */
 .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
@@ -281,7 +275,7 @@ html[data-theme="dark"] .ico-moon{display:none}
 .feature:hover{border-color:var(--line-strong);background:var(--fog)}
 .feature-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px}
 .feature-no{font:400 11px var(--mono);letter-spacing:.12em;color:var(--ash)}
-.feature-icon{font-size:22px;color:var(--signal);opacity:.62;line-height:1;transition:opacity .25s ease}
+.feature-icon{font-size:22px;color:var(--graphite);opacity:.62;line-height:1;transition:opacity .25s ease}
 .feature:hover .feature-icon{opacity:1}
 .feature h3{font-family:var(--head);font-size:21px;font-weight:400;color:var(--ink);margin:0 0 12px;letter-spacing:0}
 .feature p{font-size:13px;line-height:1.8;color:var(--slate);margin:0 0 20px;flex:1}
@@ -329,11 +323,11 @@ html[data-theme="dark"] .ico-moon{display:none}
 /* ---------- 下载：纸面卡 + 一角暖晕，暖色只在小面积点缀 ---------- */
 .download-main{position:relative;overflow:hidden;display:grid;grid-template-columns:1.35fr .65fr;
   gap:32px;padding:36px;align-items:center;
-  background:radial-gradient(560px 300px at 0% 0%,var(--peach-wash),transparent 74%),var(--paper);
+  background:radial-gradient(560px 300px at 0% 0%,var(--accent-wash),transparent 74%),var(--paper);
   border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow)}
 /* 顶部一条极细的品牌色带，替代原来整块暖棕的「强调」功能 */
 .download-main::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;
-  background:linear-gradient(90deg,var(--coral) 0 12%,var(--signal) 12% 100%);opacity:.85}
+  background:linear-gradient(90deg,var(--accent) 0 12%,var(--graphite) 12% 100%);opacity:.85}
 .download-main h3{font-family:var(--head);font-size:28px;font-weight:400;color:var(--ink);margin:18px 0 12px}
 .download-main p{font-size:13.5px;line-height:1.85;color:var(--slate);margin:0 0 22px;max-width:560px}
 .download-main code{background:var(--mist);color:var(--ink)}
@@ -450,35 +444,35 @@ html[lang="en"] .hero-sub,html[lang="en"] .section-lead{line-height:1.76}
 .hud-key{font-style:normal;color:var(--ash)}
 .hud-item b{font-weight:400;color:var(--ink)}
 .hud-sep{width:1px;height:14px;background:var(--line)}
-.hud-live{display:flex;align-items:center;gap:7px;color:var(--signal)}
-.hud-live i{width:6px;height:6px;border-radius:50%;background:var(--signal);
-  box-shadow:0 0 0 3px var(--signal-soft);animation:pulse 2.4s ease-in-out infinite}
+.hud-live{display:flex;align-items:center;gap:7px;color:var(--accent)}
+.hud-live i{width:6px;height:6px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-soft);animation:pulse 2.4s ease-in-out infinite}
 .hud-wave{display:flex;align-items:flex-end;gap:3px;height:16px;margin-left:auto}
-.hud-wave i{width:3px;height:35%;background:var(--signal);opacity:.5;border-radius:1px}
+.hud-wave i{width:3px;height:35%;background:var(--graphite);opacity:.5;border-radius:1px}
 .hud-wave i:nth-child(3n){height:90%}
 .hud-wave i:nth-child(4n){height:65%}
 .hud-coord{color:var(--ash)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.42}}
 .hero-window::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;z-index:3;
-  background:linear-gradient(90deg,var(--coral) 0 16%,var(--signal) 16% 100%)}
+  background:linear-gradient(90deg,var(--accent) 0 12%,var(--graphite) 12% 100%)}
 .screen-stage[data-label]::before{content:attr(data-label);position:absolute;top:10px;left:10px;z-index:4;
   font:400 9px var(--mono);letter-spacing:.14em;color:var(--ink);background:var(--paper);
   border:1px solid var(--line);border-radius:4px;padding:4px 8px}
 .stat{position:relative}
-.stat::before{content:"";position:absolute;top:0;left:26px;width:30px;height:2px;background:var(--signal)}
+.stat::before{content:"";position:absolute;top:0;left:26px;width:30px;height:2px;background:var(--graphite)}
 .stat-num{font-size:52px}
 .stat.invert{background:var(--ink);border-color:var(--ink)}
-.stat.invert::before{background:var(--signal)}
+.stat.invert::before{background:var(--graphite)}
 .stat.invert .stat-num,.stat.invert .stat-label{color:var(--paper)}
 .stat.invert .stat-num span,.stat.invert p{color:var(--paper);opacity:.66}
 .final::before{content:"";position:absolute;left:50%;top:50%;width:min(760px,92vw);height:min(760px,92vw);
   transform:translate(-50%,-50%);border-radius:50%;border:1px solid var(--line-soft);
-  box-shadow:0 0 0 90px rgba(13,148,136,.012),0 0 0 190px rgba(13,148,136,.010);
+  box-shadow:0 0 0 90px rgba(60,65,73,.022),0 0 0 190px rgba(60,65,73,.016);
   pointer-events:none;opacity:.85}
 
 /* ---------- 功能卡：四张卡沿一条链路依次点亮一次，不做常驻高亮 ---------- */
 .feature::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;
-  background:linear-gradient(90deg,var(--signal),rgba(13,148,136,.12));
+  background:linear-gradient(90deg,var(--accent),rgba(239,68,68,.10));
   transform:scaleX(0);transform-origin:left center;opacity:0;
   transition:transform .42s cubic-bezier(.2,.7,.2,1),opacity .2s ease}
 .feature:hover::before,.feature:focus-within::before{transform:scaleX(1);opacity:1}
@@ -495,6 +489,4 @@ html[lang="en"] .hero-sub,html[lang="en"] .section-lead{line-height:1.76}
 }
 
 /* ---------- LOGO 跳色与克制的暖色点缀 ---------- */
-.brand-mark .logo-accent{stroke:var(--coral)}
-.canvas-cta i{background:var(--ember)}
-.badge::before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--logo);margin-right:8px;vertical-align:middle}
+.badge::before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin-right:8px;vertical-align:middle}
