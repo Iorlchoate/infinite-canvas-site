@@ -1,6 +1,6 @@
 /* 无限画布官网交互
    纯原生 JS，无外部依赖，可直接跑在 GitHub Pages 上。
-   模块：i18n → 主题 → 导航/进度 → 界面预览 → 版本号 → 首页粒子场（Canvas2D） */
+   模块：i18n → 主题 → 导航/进度 → 界面预览 → 版本号 → 首页柔光光晕（Canvas2D） */
 (function () {
   'use strict';
 
@@ -434,89 +434,90 @@
   })();
 
   /* =====================================================================
-     3. 首页粒子场 —— 全站唯一的鼠标跟随动效
-     以 LOGO 的三层菱形为骨架：分层粒子 / 近邻连线 / 流动数据包 /
-     指针感应域 / 轨迹余烬。只用石墨灰 + 正红，不引入第三种彩色。
+     3. 首页柔光光晕 —— 全站唯一的鼠标跟随动效
+     参考 wu.dstrml.org 的大面积弥散辉光：只画柔和的径向光团，
+     不画任何线条 / 网格 / 准星 / 粒子。色彩沿用 LOGO 同源的
+     石墨灰 + 正红，暖白只做高光，不引入第三种彩色。
+     低分辨率离屏画布绘制后放大，天然带一层柔化，性能也更省。
      ===================================================================== */
-  (function heroParticles() {
+  (function heroGlow() {
     var hero = $('#hero');
-    var canvas = $('#heroParticles');
+    var canvas = $('#heroGlow');
     var coord = $('#heroCoord');
     if (!hero || !canvas) return;
     var ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    var W = 0, H = 0, dpr = 1, t = 0, frame = 0, lastTs = 0, near = true, raf = 0, scanY = 0;
-    var parts = [], pairs = [], embers = [];
-    var ptr = { x: -999, y: -999, has: false, speed: 0 };
+    /* 离屏：所有光团画在 0.5 倍分辨率上，放大后边缘更柔 */
+    var off = document.createElement('canvas');
+    var octx = off.getContext('2d');
+    var SCALE = 0.5;
+
+    var W = 0, H = 0, dpr = 1, t = 0, frame = 0, lastTs = 0, near = true, raf = 0;
+    var trail = [], ambient = [];
+    var ptr = { x: -999, y: -999, has: false };
+    var glow = { x: -999, y: -999, has: false, energy: 0, vx: 0, vy: 0, fade: 0 };
     var pal = palette();
 
     function palette() {
       var dark = root.getAttribute('data-theme') === 'dark';
-      return {
-        far:    dark ? [104, 116, 134] : [126, 136, 150],
-        node:   dark ? [206, 214, 226] : [60, 65, 73],
-        line:   dark ? [176, 188, 204] : [60, 65, 73],
-        ghost:  dark ? [188, 200, 216] : [60, 65, 73],
-        accent: dark ? [255, 107, 96] : [239, 68, 68],
-        dotA:   dark ? .86 : .80,
-        linkA:  dark ? .32 : .26,
-        glow:   dark ? 9 : 0
+      return dark ? {
+        mode: 'lighter',
+        hi:   [255, 238, 230],   /* 暖白高光：发光的核心 */
+        warm: [255, 107, 96],    /* LOGO 正红的深色版 */
+        cool: [96, 112, 140],    /* 极弱的冷石墨，只做外圈收边 */
+        ambA: .038, trailA: .115, coreA: .26, hiA: .34, coolA: .042,
+        veil: .30
+      } : {
+        mode: 'source-over',
+        hi:   [255, 249, 246],   /* 白心，把红晕洗亮 */
+        warm: [239, 68, 68],     /* LOGO 正红 */
+        cool: [60, 65, 73],      /* LOGO 石墨灰 */
+        ambA: .020, trailA: .042, coreA: .070, hiA: .26, coolA: .013,
+        veil: .44
       };
     }
     function rgba(c, a) {
       return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' +
-        Math.max(0, Math.min(1, a)).toFixed(3) + ')';
+        Math.max(0, Math.min(1, a)).toFixed(4) + ')';
     }
     function pad(v) { return ('0000' + Math.max(0, Math.round(v))).slice(-4); }
-    function edge(y) { return Math.max(0, Math.min(1, y / 80, (H - y) / 80)); }
-    /* 左侧标题 / 正文区连续压暗，保证文字始终压得住底纹 */
+    /* 左侧标题 / 正文区降低光量，保证文字始终压得住底纹 */
     function veil(x, y) {
-      var u = Math.max(0, 1 - Math.abs(x - W * .29) / (W * .36));
-      var v = Math.max(0, 1 - Math.abs(y - H * .34) / (H * .38));
-      return 1 - .62 * u * v;
+      var u = Math.max(0, 1 - Math.abs(x - W * .27) / (W * .40));
+      var v = Math.max(0, 1 - Math.abs(y - H * .40) / (H * .46));
+      return 1 - pal.veil * u * v;
     }
 
-    function seed() {
-      var n = Math.round(W * H / 11500);
-      n = Math.max(44, Math.min(W < 620 ? 66 : 148, n));
-      parts = [];
-      for (var i = 0; i < n; i++) {
-        var r = Math.random();
-        var layer = r < .32 ? 0 : (r < .87 ? 1 : 2);
-        parts.push({
-          x: Math.random() * W,
-          y: Math.random() * H,
-          vx: (Math.random() - .5) * (layer === 0 ? 7 : 12),
-          vy: (Math.random() - .5) * (layer === 0 ? 7 : 12),
-          layer: layer,
-          s: layer === 0 ? 1.3 : (layer === 1 ? 2.0 : 2.7),
-          a: layer === 0 ? .44 : (layer === 1 ? .82 : 1),
-          ph: Math.random() * 6.283,
-          anchor: layer === 2,
-          spin: Math.random() < .5 ? -1 : 1
-        });
-      }
+    function seedAmbient() {
+      var R = Math.min(W, H);
+      ambient = [
+        { bx: .72, by: .32, r: R * .34, ph: .4,  sp: .17, ax: 40, ay: 24, k: 1 },
+        { bx: .56, by: .70, r: R * .30, ph: 2.4, sp: .13, ax: 32, ay: 28, k: .70 }
+      ];
     }
 
     function resize() {
       var r = hero.getBoundingClientRect();
       W = Math.max(1, Math.round(r.width));
       H = Math.max(1, Math.round(r.height));
-      dpr = Math.min(2, window.devicePixelRatio || 1);
+      dpr = Math.min(1.5, window.devicePixelRatio || 1);
       canvas.width = Math.round(W * dpr);
       canvas.height = Math.round(H * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      seed();
-      pairs = [];
+      off.width = Math.max(1, Math.round(W * SCALE));
+      off.height = Math.max(1, Math.round(H * SCALE));
+      octx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+      seedAmbient();
+      trail.length = 0;
       if (reduceMotion) draw();
     }
 
     function onMove(e) {
       var r = hero.getBoundingClientRect();
       var x = e.clientX - r.left, y = e.clientY - r.top;
-      if (x < -120 || y < -120 || x > W + 120 || y > H + 120) {
-        if (ptr.has) { ptr.has = false; embers.length = 0; }
+      if (x < -160 || y < -160 || x > W + 160 || y > H + 160) {
+        ptr.has = false;
         if (coord) coord.textContent = 'X 0000 / Y 0000';
         if (reduceMotion) draw();
         return;
@@ -524,22 +525,26 @@
       var prev = ptr.has ? { x: ptr.x, y: ptr.y } : null;
       var jump = prev ? Math.hypot(x - prev.x, y - prev.y) : 0;
       ptr.x = x; ptr.y = y; ptr.has = true;
-      ptr.speed = Math.min(1, ptr.speed * .55 + jump / 95);
-      /* 轨迹改成余烬粒子：快速甩动不再拉出跨屏长线 */
-      if (prev && jump < 90) {
-        var steps = Math.min(4, Math.max(1, Math.round(jump / 10)));
+      if (!glow.has) { glow.x = x; glow.y = y; glow.has = true; }
+      glow.energy = Math.min(1, glow.energy * .62 + jump / 150);
+      glow.vx = prev ? x - prev.x : 0;
+      glow.vy = prev ? y - prev.y : 0;
+
+      /* 拖尾：沿路径每 ~24px 落一枚光团，跳变过大时重新起笔 */
+      if (prev && jump < 130) {
+        var steps = Math.min(6, Math.max(1, Math.round(jump / 24)));
         for (var k = 1; k <= steps; k++) {
           var u = k / steps;
-          embers.push({
-            x: prev.x + (x - prev.x) * u + (Math.random() - .5) * 4,
-            y: prev.y + (y - prev.y) * u + (Math.random() - .5) * 4,
-            vx: (Math.random() - .5) * 18,
-            vy: (Math.random() - .5) * 18 - 7,
+          trail.push({
+            x: prev.x + (x - prev.x) * u + (Math.random() - .5) * 8,
+            y: prev.y + (y - prev.y) * u + (Math.random() - .5) * 8,
+            r: 78 + Math.random() * 58 + Math.min(48, jump * .30),
             life: 1,
-            s: Math.random() < .25 ? 2.1 : 1.25
+            decay: .42 + Math.random() * .22,
+            k: .72 + Math.random() * .38
           });
         }
-        if (embers.length > 190) embers.splice(0, embers.length - 190);
+        if (trail.length > 16) trail.splice(0, trail.length - 16);
       }
       if (coord) coord.textContent = 'X ' + pad(x) + ' / Y ' + pad(y);
       if (reduceMotion) draw();
@@ -547,296 +552,97 @@
 
     function update(dt) {
       t += dt;
-      var i, p;
-      for (i = 0; i < parts.length; i++) {
-        p = parts[i];
-        p.x += p.vx * dt;
-        p.y += (p.vy + Math.sin(t * .6 + p.ph) * (p.layer === 0 ? 1.6 : 2.8)) * dt;
-        if (ptr.has) {
-          var dx = ptr.x - p.x, dy = ptr.y - p.y;
-          var d = Math.sqrt(dx * dx + dy * dy) || 1;
-          if (d < 240) {
-            var f = 1 - d / 240;
-            /* 拉向半径 ~72 的环并切向旋转，形成临时星图，不会堆成一点 */
-            var pull = ((d - 72) / d) * 165 * f;
-            var swirl = 112 * f * p.spin;
-            p.x += (dx / d * pull - dy / d * swirl) * dt;
-            p.y += (dy / d * pull + dx / d * swirl) * dt;
-          }
-        }
-        if (p.x < -8) p.x = W + 8; else if (p.x > W + 8) p.x = -8;
-        if (p.y < -8) p.y = H + 8; else if (p.y > H + 8) p.y = -8;
+      /* 主光团带惯性追随指针，甩动时沿速度方向稍稍前探 */
+      glow.fade += ((ptr.has ? 1 : 0) - glow.fade) * (1 - Math.pow(.06, dt));
+      if (ptr.has) {
+        var lead = 16 + glow.energy * 26;
+        var tx = ptr.x + glow.vx * lead / 24;
+        var ty = ptr.y + glow.vy * lead / 24;
+        var f = 1 - Math.pow(.0025, dt);   /* 约 0.11/帧 @60fps */
+        glow.x += (tx - glow.x) * f;
+        glow.y += (ty - glow.y) * f;
       }
-      for (i = embers.length - 1; i >= 0; i--) {
-        var e = embers[i];
-        e.x += e.vx * dt; e.y += e.vy * dt;
-        e.vx *= .96; e.vy = e.vy * .96 + 5 * dt;
-        e.life -= dt * .95;
-        if (e.life <= 0) embers.splice(i, 1);
-      }
-      ptr.speed *= Math.pow(.12, dt);
-      scanY = (scanY + dt * 42) % (H + 160);
-    }
-
-    /* ---------- 背景骨架：三层菱形，直接取自 LOGO ---------- */
-    function diamond(cx, cy, rx, ry, stroke, lw) {
-      ctx.strokeStyle = stroke; ctx.lineWidth = lw;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - ry); ctx.lineTo(cx + rx, cy);
-      ctx.lineTo(cx, cy + ry); ctx.lineTo(cx - rx, cy);
-      ctx.closePath(); ctx.stroke();
-    }
-    function drawBackdrop() {
-      var mobile = W < 620;
-      var cx = W * (mobile ? .92 : .76), cy = H * .44;
-      var rx = Math.min(W * (mobile ? .21 : .27), H * .55, 320);
-      var ry = rx * .46;
-      var breathe = 1 + Math.sin(t * .32) * .03;
-      /* 手机上几何骨架整体压淡，避免红色菱形边斜穿标题 */
-      var mf = mobile ? .34 : 1;
-      for (var i = 0; i < 3; i++) {
-        var yy = cy + (i - 1) * ry * .63;
-        var a = (i === 2 ? .16 : .11) * veil(cx, yy) * mf;
-        diamond(cx, yy, rx * breathe, ry * breathe,
-          rgba(i === 2 ? pal.accent : pal.ghost, a), 1);
-      }
-      /* 缓慢旋转的虚线刻度环 */
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(t * .055);
-      ctx.setLineDash([2, 9]);
-      ctx.strokeStyle = rgba(pal.ghost, .14 * veil(cx, cy) * mf);
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(0, 0, rx * .84, 0, 6.2832); ctx.stroke();
-      ctx.setLineDash([]);
-      for (var k = 0; k < 12; k++) {
-        var ang = k * Math.PI / 6;
-        var r0 = rx * .84;
-        ctx.strokeStyle = rgba(pal.ghost, (k % 3 === 0 ? .22 : .10) * veil(cx, cy) * mf);
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(ang) * (r0 - 5), Math.sin(ang) * (r0 - 5));
-        ctx.lineTo(Math.cos(ang) * (r0 + (k % 3 === 0 ? 8 : 4)), Math.sin(ang) * (r0 + (k % 3 === 0 ? 8 : 4)));
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    function drawTicks() {
-      var step = W < 620 ? 64 : 80;
-      ctx.lineWidth = 1;
-      for (var y = step * .5; y < H; y += step) {
-        for (var x = step * .5; x < W; x += step) {
-          var hot = ptr.has ? Math.max(0, 1 - Math.hypot(x - ptr.x, y - ptr.y) / 180) : 0;
-          ctx.strokeStyle = rgba(hot > .1 ? pal.accent : pal.ghost,
-            (.16 + hot * .34) * veil(x, y));
-          ctx.beginPath();
-          ctx.moveTo(x - 2, y); ctx.lineTo(x + 2, y);
-          ctx.moveTo(x, y - 2); ctx.lineTo(x, y + 2);
-          ctx.stroke();
-        }
+      glow.energy *= Math.pow(.16, dt);
+      for (var i = trail.length - 1; i >= 0; i--) {
+        var b = trail[i];
+        b.life -= dt * b.decay;
+        b.r += dt * 22;                     /* 缓慢扩散 */
+        b.y -= dt * 5;
+        if (b.life <= 0) trail.splice(i, 1);
       }
     }
 
-    function drawScan() {
-      if (scanY < 40 || scanY > H) return;
-      var band = 24;
-      var g = ctx.createLinearGradient(0, scanY - band, 0, scanY);
-      g.addColorStop(0, rgba(pal.ghost, 0));
-      g.addColorStop(1, rgba(pal.ghost, .035));
-      ctx.fillStyle = g;
-      ctx.fillRect(0, scanY - band, W, band);
-      var gh = ctx.createLinearGradient(0, 0, W, 0);
-      gh.addColorStop(0, rgba(pal.ghost, 0));
-      gh.addColorStop(.1, rgba(pal.ghost, .18));
-      gh.addColorStop(.9, rgba(pal.ghost, .18));
-      gh.addColorStop(1, rgba(pal.ghost, 0));
-      ctx.strokeStyle = gh;
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(0, scanY); ctx.lineTo(W, scanY); ctx.stroke();
+    /* 单枚柔光团：四段 colorStop，中心到边缘完全渐隐，没有任何硬边 */
+    function blob(x, y, r, col, a) {
+      if (r <= 0 || a <= 0) return;
+      var v = veil(x, y);
+      a *= v;
+      if (a <= .0006) return;
+      var g = octx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0,    rgba(col, a));
+      g.addColorStop(.22,  rgba(col, a * .62));
+      g.addColorStop(.48,  rgba(col, a * .20));
+      g.addColorStop(.72,  rgba(col, a * .04));
+      g.addColorStop(1,    rgba(col, 0));
+      octx.fillStyle = g;
+      octx.beginPath();
+      octx.arc(x, y, r, 0, 6.2832);
+      octx.fill();
     }
 
-    function buildPairs() {
-      pairs.length = 0;
-      var lim = W < 620 ? 98 : 126, lim2 = lim * lim;
-      var deg = new Uint8Array(parts.length);
-      for (var i = 0; i < parts.length; i++) {
-        if (deg[i] >= 3) continue;
-        var a = parts[i];
-        for (var j = i + 1; j < parts.length; j++) {
-          if (deg[j] >= 3) continue;
-          var b = parts[j];
-          var dx = a.x - b.x, dy = a.y - b.y;
-          var d2 = dx * dx + dy * dy;
-          if (d2 > lim2) continue;
-          pairs.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y, k: 1 - Math.sqrt(d2) / lim });
-          deg[i]++; deg[j]++;
-          if (deg[i] >= 3) break;
-        }
+    function drawAmbient() {
+      for (var i = 0; i < ambient.length; i++) {
+        var a = ambient[i];
+        var x = W * a.bx + Math.sin(t * a.sp + a.ph) * a.ax;
+        var y = H * a.by + Math.cos(t * a.sp * .82 + a.ph) * a.ay;
+        var r = a.r * (1 + Math.sin(t * .19 + a.ph) * .06);
+        /* 冷暖叠层：外圈石墨灰打底，内圈正红薄雾 */
+        blob(x, y, r * 1.12, pal.cool, pal.coolA * a.k);
+        blob(x, y, r, pal.warm, pal.ambA * a.k);
       }
     }
 
-    function drawLinks() {
-      buildPairs();
-      ctx.lineWidth = 1;
-      for (var i = 0; i < pairs.length; i++) {
-        var l = pairs[i];
-        var mx = (l.ax + l.bx) / 2, my = (l.ay + l.by) / 2;
-        var hot = ptr.has ? Math.max(0, 1 - Math.hypot(mx - ptr.x, my - ptr.y) / 195) : 0;
-        var v = edge(my) * veil(mx, my);
-        ctx.strokeStyle = rgba(hot > .15 ? pal.accent : pal.line,
-          (pal.linkA * l.k + hot * .5) * v);
-        ctx.beginPath(); ctx.moveTo(l.ax, l.ay); ctx.lineTo(l.bx, l.by); ctx.stroke();
-        /* 数据包带三段硬边拖尾；静态态也留少量正红跳色 */
-        if (i % 4 === 0) {
-          var red = hot > .15 || i % 12 === 0;
-          var ph = (t * (.28 + hot * .32) + i * .137) % 1;
-          for (var q = 0; q < 3; q++) {
-            var u = ph - q * .028;
-            if (u < 0) continue;
-            var px = l.ax + (l.bx - l.ax) * u, py = l.ay + (l.by - l.ay) * u;
-            var aa = (.78 - q * .23) * (1 + hot * .35) * edge(py) * veil(px, py);
-            if (pal.glow && hot > .5 && q === 0) {
-              ctx.shadowColor = rgba(pal.accent, 1); ctx.shadowBlur = pal.glow;
-            }
-            ctx.fillStyle = rgba(red ? pal.accent : pal.node, aa);
-            var sz = 3.4 - q * .85;
-            ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
-            ctx.shadowBlur = 0;
-          }
-        }
+    function drawTrail() {
+      for (var i = 0; i < trail.length; i++) {
+        var b = trail[i];
+        var a = pal.trailA * b.life * b.life * b.k;
+        blob(b.x, b.y, b.r * 1.35, pal.cool, a * .30);
+        blob(b.x, b.y, b.r, pal.warm, a);
       }
     }
 
-    function drawParts() {
-      for (var i = 0; i < parts.length; i++) {
-        var p = parts[i];
-        var pulse = .82 + Math.sin(t * 1.6 + p.ph) * .18;
-        var hot = ptr.has ? Math.max(0, 1 - Math.hypot(p.x - ptr.x, p.y - ptr.y) / 190) : 0;
-        var a = (pal.dotA * p.a * pulse + hot * .6) * edge(p.y) * veil(p.x, p.y);
-        var s = p.s * (1 + hot * .55);
-        var col = hot > .32 ? pal.accent : (p.layer === 0 ? pal.far : pal.node);
-        ctx.fillStyle = rgba(col, a);
-        if (pal.glow && hot > .6) {
-          ctx.shadowColor = rgba(pal.accent, 1); ctx.shadowBlur = pal.glow;
-        }
-        ctx.fillRect(p.x - s, p.y - s, s * 2, s * 2);
-        ctx.shadowBlur = 0;
-        if (p.anchor) {
-          /* 锚点画小菱形，呼应 LOGO 的层叠形 */
-          var g = s + 4;
-          ctx.strokeStyle = rgba(hot > .32 ? pal.accent : pal.ghost, a * .6);
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y - g); ctx.lineTo(p.x + g, p.y);
-          ctx.lineTo(p.x, p.y + g); ctx.lineTo(p.x - g, p.y);
-          ctx.closePath(); ctx.stroke();
-        }
+    function drawCore() {
+      /* 待机位：右侧中部缓慢呼吸，压在菱形装饰附近，不碰左侧标题 */
+      var ix = W * (W < 620 ? .72 : .70) + Math.sin(t * .23) * W * .055;
+      var iy = H * .42 + Math.cos(t * .18) * H * .070;
+      var iR = (W < 620 ? 178 : 262) * (1 + Math.sin(t * .31) * .07);
+      var iA = .82 * (1 - glow.fade);      /* 指针接管后待机光淡出 */
+      if (iA > .01) {
+        blob(ix, iy, iR * 1.30, pal.cool, pal.coolA * iA);
+        blob(ix, iy, iR,        pal.warm, pal.coreA * iA);
+        blob(ix, iy, iR * .58,  pal.warm, pal.coreA * .66 * iA);
+        blob(ix, iy, iR * .32,  pal.hi,   pal.hiA * .80 * iA);
       }
-    }
-
-    /* ---------- 指针感应域 ---------- */
-    function drawField() {
-      if (!ptr.has) return;
-      var R = 132 + ptr.speed * 72;
-      var v = veil(ptr.x, ptr.y);
-      ctx.save();
-      ctx.translate(ptr.x, ptr.y);
-      /* 雷达扫描扇形：一条主射线 + 递减尾迹，硬边线，不做柔化 */
-      var sa = t * 1.15;
-      for (var q = 0; q < 6; q++) {
-        var ang2 = sa - q * .055;
-        ctx.strokeStyle = rgba(pal.accent, (.46 - q * .065) * v);
-        ctx.lineWidth = q === 0 ? 1.2 : 1;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(ang2) * R * .9, Math.sin(ang2) * R * .9);
-        ctx.stroke();
-      }
-      ctx.strokeStyle = rgba(pal.accent, .30 * v);
-      ctx.beginPath(); ctx.arc(0, 0, R * .74, sa - .30, sa); ctx.stroke();
-      ctx.rotate(t * .12);
-      ctx.setLineDash([3, 8]);
-      ctx.strokeStyle = rgba(pal.accent, .46 * v);
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(0, 0, R, 0, 6.2832); ctx.stroke();
-      ctx.setLineDash([]);
-      for (var k = 0; k < 8; k++) {
-        var ang = k * Math.PI / 4;
-        ctx.strokeStyle = rgba(pal.accent, .38 * v);
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(ang) * (R - 7), Math.sin(ang) * (R - 7));
-        ctx.lineTo(Math.cos(ang) * (R + 4), Math.sin(ang) * (R + 4));
-        ctx.stroke();
-      }
-      ctx.rotate(-t * .12);
-      ctx.strokeStyle = rgba(pal.accent, .22 * v);
-      ctx.beginPath(); ctx.arc(0, 0, R * .62, 0, 6.2832); ctx.stroke();
-      /* 四角方括号 */
-      var g = R * .82;
-      ctx.strokeStyle = rgba(pal.accent, .62 * v);
-      ctx.beginPath();
-      ctx.moveTo(-g, -g + 8); ctx.lineTo(-g, -g); ctx.lineTo(-g + 8, -g);
-      ctx.moveTo(g - 8, -g); ctx.lineTo(g, -g); ctx.lineTo(g, -g + 8);
-      ctx.moveTo(-g, g - 8); ctx.lineTo(-g, g); ctx.lineTo(-g + 8, g);
-      ctx.moveTo(g - 8, g); ctx.lineTo(g, g); ctx.lineTo(g, g - 8);
-      ctx.stroke();
-      ctx.restore();
-      /* 域内粒子连成星图 */
-      var cnt = 0;
-      ctx.lineWidth = 1;
-      for (var i = 0; i < parts.length && cnt < 14; i++) {
-        var p = parts[i];
-        var d = Math.hypot(p.x - ptr.x, p.y - ptr.y);
-        if (d > R) continue;
-        ctx.strokeStyle = rgba(pal.accent, (1 - d / R) * .72 *
-          edge((p.y + ptr.y) / 2) * veil((p.x + ptr.x) / 2, (p.y + ptr.y) / 2));
-        ctx.beginPath(); ctx.moveTo(ptr.x, ptr.y); ctx.lineTo(p.x, p.y); ctx.stroke();
-        cnt++;
-      }
-    }
-
-    function drawEmbers() {
-      for (var i = 0; i < embers.length; i++) {
-        var e = embers[i];
-        var s = e.s * (.4 + .6 * e.life);
-        ctx.fillStyle = rgba(pal.accent,
-          e.life * .88 * edge(e.y) * veil(e.x, e.y));
-        ctx.fillRect(e.x - s, e.y - s, s * 2, s * 2);
-      }
-    }
-
-    function drawPointer() {
-      if (!ptr.has) return;
-      var x = ptr.x, y = ptr.y;
-      ctx.strokeStyle = rgba(pal.ghost, .78);
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x - 18, y); ctx.lineTo(x - 8, y);
-      ctx.moveTo(x + 8, y); ctx.lineTo(x + 18, y);
-      ctx.moveTo(x, y - 18); ctx.lineTo(x, y - 8);
-      ctx.moveTo(x, y + 8); ctx.lineTo(x, y + 18);
-      ctx.stroke();
-      /* 中心菱形（LOGO 形）+ 正红核心 */
-      ctx.strokeStyle = rgba(pal.accent, .9);
-      diamond(x, y, 6, 2.8, rgba(pal.accent, .9), 1);
-      ctx.fillStyle = rgba(pal.accent, .95);
-      ctx.fillRect(x - 1.4, y - 1.4, 2.8, 2.8);
-      /* 坐标读数 */
-      ctx.fillStyle = rgba(pal.ghost, .65);
-      ctx.font = '9px ui-monospace,Menlo,Consolas,monospace';
-      ctx.fillText('X ' + pad(x) + '  Y ' + pad(y), x + 26, y + 22);
+      if (!glow.has || glow.fade < .01) return;
+      var R = (W < 620 ? 150 : 218) + glow.energy * 70;
+      var x = glow.x, y = glow.y;
+      var k = glow.fade;
+      /* 外圈石墨收边 → 正红辉光 → 加浓内层 → 暖白亮核 */
+      blob(x, y, R * 1.34, pal.cool, pal.coolA * k);
+      blob(x, y, R,        pal.warm, pal.coreA * k);
+      blob(x, y, R * .60,  pal.warm, pal.coreA * .70 * k);
+      blob(x, y, R * .34,  pal.hi,   pal.hiA * k);
     }
 
     function draw() {
       ctx.clearRect(0, 0, W, H);
-      drawBackdrop();
-      drawTicks();
-      drawScan();
-      drawLinks();
-      drawParts();
-      drawField();
-      drawEmbers();
-      drawPointer();
+      octx.clearRect(0, 0, W, H);
+      octx.globalCompositeOperation = pal.mode;
+      drawAmbient();
+      drawTrail();
+      drawCore();
+      octx.globalCompositeOperation = 'source-over';
+      ctx.drawImage(off, 0, 0, off.width, off.height, 0, 0, W, H);
     }
 
     function loop(ts) {
@@ -858,11 +664,11 @@
     window.addEventListener('pointermove', onMove, { passive: true });
     window.addEventListener('pointerdown', function (e) {
       onMove(e);
-      if (ptr.has) ptr.speed = 1;
+      if (ptr.has) glow.energy = 1;
       if (reduceMotion) draw();
     }, { passive: true });
     document.addEventListener('pointerleave', function () {
-      ptr.has = false; embers.length = 0;
+      ptr.has = false;
       if (coord) coord.textContent = 'X 0000 / Y 0000';
       if (reduceMotion) draw();
     });
@@ -873,7 +679,7 @@
     }
     document.addEventListener('ic:theme', function () {
       pal = palette();
-      if (reduceMotion) draw();
+      draw();
     });
 
     resize();
@@ -890,8 +696,8 @@
         },
         palette: function () { return pal; },
         state: function () {
-          return { W: W, H: H, parts: parts.length, pairs: pairs.length,
-                   embers: embers.length, visible: canvas.width > 0 };
+          return { W: W, H: H, trail: trail.length, ambient: ambient.length,
+                   pointer: ptr.has, visible: canvas.width > 0 };
         },
         pixels: function () {
           var d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
