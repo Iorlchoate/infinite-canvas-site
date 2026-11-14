@@ -1,6 +1,6 @@
 /* 无限画布官网交互
    纯原生 JS，无外部依赖，可直接跑在 GitHub Pages 上。
-   模块：i18n → 主题 → 导航/进度 → 界面预览 → 版本号 → 运用场景矢量场（Canvas2D） */
+   模块：i18n → 主题 → 导航/进度 → 界面预览 → 版本号 → 首页粒子场（Canvas2D） */
 (function () {
   'use strict';
 
@@ -80,21 +80,6 @@
     'node5.tag': 'Archive',
     'node5.title': 'Asset groups',
     'node5.sub': 'Ready to publish online',
-
-    /* 运用场景控制台 */
-    'field.aria': 'Interactive workflow field',
-    'field.eyebrow': 'FIELD NOTES · 04 WORKFLOWS',
-    'field.title': 'One canvas, one complete scheme',
-    'field.lead': 'Not "everything can connect". Four real jobs, first step to last, all on the same board. Pick one and watch it run.',
-    'field.listaria': 'Use cases',
-    'field.s1': 'Concept schemes',
-    'field.s1sub': 'Site plan → style transfer → concept renders',
-    'field.s2': 'Facade options',
-    'field.s2sub': 'Site photo → inpainting → material comparison',
-    'field.s3': 'Multi-view deck',
-    'field.s3sub': 'Render → outpaint → presentation layout',
-    'field.s4': 'Asset reuse',
-    'field.s4sub': 'Collect → group → reuse on the next project',
 
     /* WHY */
     'why.eyebrow': 'LOCAL BY DESIGN',
@@ -449,401 +434,291 @@
   })();
 
   /* =====================================================================
-     3. 运用场景控制台：Canvas2D 矢量场
-     不是流体烟。这里是等距网格随指针形变、发光轨迹、雷达环、
-     节点连线上跑的数据包和 HUD 读数 —— 科幻感来自结构与硬边光线。
+     3. 首页粒子场 —— 全站唯一的鼠标跟随动效
+     科技感来自硬边光点、近邻连线、数据包与结构化准星读数。
+     刻意不用柔化烟体：连续渐变的烟会滑回水墨感。
      ===================================================================== */
-  (function fieldBand() {
-    var stage = $('#fieldStage');
-    var canvas = $('#fieldCanvas');
-    if (!stage || !canvas) return;
+  (function heroParticles() {
+    var hero = $('#hero');
+    var canvas = $('#heroParticles');
+    var coord = $('#heroCoord');
+    if (!hero || !canvas) return;
     var ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    var tabs = $$('.field-tab');
-    var descEl = $('#fieldDesc');
-    var tagEl = $('#fieldTag');
-    var flowEl = $('#fieldFlow');
-    var modeEl = $('#fieldMode');
-    var readoutEl = $('#fieldReadout');
-
-    /* 四个真实工作流：节点名、说明、流程、模式各带中英两份 */
-    var SCENES = [
-      {
-        pos: [[.13, .22], [.13, .53], [.47, .36], [.82, .20], [.82, .52]],
-        zh: {
-          mode: 'CONCEPT',
-          desc: '拿到一张手绘总平面和三张参考照片：拖进画布、连到风格迁移节点，一小时内出四版概念效果，选中的直接归入方案 A。',
-          nodes: ['总平面草图', '参考图 ×3', '风格迁移', '概念效果 ×4', '归档 · 方案 A'],
-          flow: ['总平面', '参考图', '风格迁移', '概念效果', '归档']
-        },
-        en: {
-          mode: 'CONCEPT',
-          desc: 'A hand-drawn site plan and three reference photos land on the canvas, wire into a style-transfer node, and four concept renders are in Scheme A within the hour.',
-          nodes: ['Site plan sketch', 'References ×3', 'Style transfer', 'Concept ×4', 'File · Scheme A'],
-          flow: ['Site plan', 'References', 'Transfer', 'Concepts', 'Archive']
-        }
-      },
-      {
-        pos: [[.16, .20], [.16, .51], [.48, .31], [.80, .18], [.80, .49]],
-        zh: {
-          mode: 'FACADE',
-          desc: '旧建筑立面要试三种材质。用局部重绘只改指定区域，三轮结果并排摆在同一张布上，客户当场圈定，不用反复导出。',
-          nodes: ['实拍立面', '局部重绘', '材质 A', '材质 B / C', '并排比选'],
-          flow: ['实拍', '局部重绘', '材质变体', '并排比选']
-        },
-        en: {
-          mode: 'FACADE',
-          desc: 'Three material options for an old facade. Inpainting changes only the masked area; three rounds sit side by side on one board so the client can pick on the spot.',
-          nodes: ['Site photo', 'Inpainting', 'Material A', 'Material B / C', 'Side-by-side'],
-          flow: ['Photo', 'Inpaint', 'Variants', 'Compare']
-        }
-      },
-      {
-        pos: [[.13, .18], [.38, .20], [.55, .44], [.81, .19], [.81, .52]],
-        zh: {
-          mode: 'MULTIVIEW',
-          desc: '汇报前要补齐鸟瞰、人视和夜景：扩展出图接九宫格多视角，一次生成九张，选中的图直接排进汇报页。',
-          nodes: ['效果图', '扩展出图', '九宫格多视角', '鸟瞰 / 夜景', '汇报版式'],
-          flow: ['效果图', '扩展', '九宫格', '汇报页']
-        },
-        en: {
-          mode: 'MULTIVIEW',
-          desc: 'Before a review you need the aerial, the eye-level view and the night shot. Outpainting feeds a 3×3 multi-view grid: nine images in one run, chosen ones straight into the deck.',
-          nodes: ['Base render', 'Outpaint', '3×3 multi-view', 'Aerial / night', 'Deck layout'],
-          flow: ['Render', 'Outpaint', '3×3 views', 'Deck']
-        }
-      },
-      {
-        pos: [[.14, .24], [.38, .51], [.55, .23], [.78, .47], [.86, .19]],
-        zh: {
-          mode: 'LIBRARY',
-          desc: '项目收尾，上百张过程图批量采集、自动分组与智能分类；下个项目开新画布时，直接从素材库拖回来接着用。',
-          nodes: ['批量采集', '自动分组', '智能分类', '方案 A 素材', '跨项目复用'],
-          flow: ['采集', '分组', '分类', '复用']
-        },
-        en: {
-          mode: 'LIBRARY',
-          desc: 'At wrap-up, hundreds of in-progress images are collected, grouped and classified in one pass. On the next project you drag them straight back out of the library.',
-          nodes: ['Batch collect', 'Auto groups', 'Auto classify', 'Scheme A assets', 'Reuse'],
-          flow: ['Collect', 'Group', 'Classify', 'Reuse']
-        }
-      }
-    ];
-
-    var LINKS = [[0, 2], [1, 2], [2, 3], [2, 4]];
-    var C = {
-      mesh: 'rgba(94,234,212,.055)', meshHot: 'rgba(94,234,212,.72)',
-      wire: 'rgba(94,234,212,.22)', wireHot: 'rgba(94,234,212,.9)',
-      node: 'rgba(7,16,23,.94)', nodeLine: 'rgba(94,234,212,.36)',
-      text: '#dceef1', dim: '#6b8792', accent: '#5eead4', coral: '#f2685c'
-    };
-
-    function loc(n) { return n[lang] || n.zh; }
-    var active = 0;
-    var W = 0, H = 0, dpr = 1;
-    var frame = 0, lastTs = 0, near = true, raf = 0, scanX = 0;
+    var W = 0, H = 0, dpr = 1, t = 0, frame = 0, lastTs = 0, near = true, raf = 0, scanY = 0;
+    var parts = [], pairs = [], rings = [], trail = [];
     var ptr = { x: -999, y: -999, has: false, lastRing: 0 };
-    var trail = [], rings = [], packets = [], nodes = [], flash = 0, hover = -1;
-    var NODE_W = 132, NODE_H = 44;
+    var pal = palette();
 
-    for (var n0 = 0; n0 < 5; n0++) nodes.push({ x: 0, y: 0, tx: 0, ty: 0, ready: false });
+    function palette() {
+      var dark = root.getAttribute('data-theme') === 'dark';
+      return {
+        dot: dark ? [94, 234, 212] : [13, 148, 136],
+        sig: dark ? [94, 234, 212] : [13, 148, 136],
+        line: dark ? [94, 234, 212] : [17, 24, 39],
+        coral: [242, 104, 92],
+        dotA: dark ? .72 : .60,
+        linkA: dark ? .28 : .17,
+        gridA: dark ? .075 : .06,
+        glow: dark ? 9 : 0
+      };
+    }
+    function rgba(c, a) {
+      return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' +
+        Math.max(0, Math.min(1, a)).toFixed(3) + ')';
+    }
+    function pad(v) { return ('0000' + Math.max(0, Math.round(v))).slice(-4); }
+    function edge(y) { return Math.max(0, Math.min(1, y / 90, (H - y) / 90)); }
+
+    function seed() {
+      var n = Math.round(W * H / 13500);
+      n = Math.max(38, Math.min(W < 620 ? 58 : 118, n));
+      parts = [];
+      for (var i = 0; i < n; i++) {
+        parts.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - .5) * 11,
+          vy: (Math.random() - .5) * 11,
+          s: Math.random() < .18 ? 2.4 : 1.5,
+          a: .55 + Math.random() * .45,
+          ph: Math.random() * 6.283,
+          anchor: Math.random() < .1
+        });
+      }
+    }
 
     function resize() {
-      var r = stage.getBoundingClientRect();
+      var r = hero.getBoundingClientRect();
       W = Math.max(1, Math.round(r.width));
       H = Math.max(1, Math.round(r.height));
       dpr = Math.min(2, window.devicePixelRatio || 1);
       canvas.width = Math.round(W * dpr);
       canvas.height = Math.round(H * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      NODE_W = Math.min(138, Math.max(96, W * 0.19));
-      NODE_H = W < 520 ? 38 : 44;
-      targetNodes(true);
-      if (reduceMotion) draw(0);
-    }
-
-    function targetNodes(snap) {
-      var p = SCENES[active].pos;
-      for (var i = 0; i < 5; i++) {
-        var x = Math.max(NODE_W / 2 + 12, Math.min(W - NODE_W / 2 - 12, p[i][0] * W));
-        // 手机上说明卡更高，给下半区留出空间，节点不要被盖住
-        var reserve = W < 520 ? H * .42 : 90;
-        var y = Math.max(NODE_H / 2 + 30, Math.min(H - NODE_H / 2 - reserve, p[i][1] * H));
-        nodes[i].tx = x; nodes[i].ty = y;
-        if (snap || !nodes[i].ready) { nodes[i].x = x; nodes[i].y = y; nodes[i].ready = true; }
-      }
-    }
-
-    function paintText() {
-      var s = loc(SCENES[active]);
-      if (descEl) descEl.textContent = s.desc;
-      if (tagEl) tagEl.textContent = 'SCENE 0' + (active + 1) + ' / 04';
-      if (modeEl) modeEl.textContent = s.mode;
-      if (flowEl) {
-        var h = '';
-        for (var i = 0; i < s.flow.length; i++) {
-          if (i) h += '<i></i>';
-          h += '<span></span>';
-        }
-        flowEl.innerHTML = h;
-        $$('#fieldFlow span').forEach(function (el, i) { el.textContent = s.flow[i]; });
-      }
-    }
-
-    function setScene(i) {
-      if (i === active && nodes[0].ready) return;
-      active = i;
-      tabs.forEach(function (t, k) {
-        t.classList.toggle('active', k === i);
-        t.setAttribute('aria-selected', k === i ? 'true' : 'false');
-      });
-      paintText();
-      targetNodes(false);
-      flash = 1;
-      rings.push({ x: W * .5, y: H * .38, r: 0, a: .9 });
-      packets = LINKS.map(function (_, k) { return { p: (k * .23 + Math.random() * .2) % 1, sp: .28 + Math.random() * .18 }; });
-      if (reduceMotion) draw(0);
+      seed();
+      pairs = [];
+      if (reduceMotion) draw();
     }
 
     function onMove(e) {
-      var r = stage.getBoundingClientRect();
-      ptr.x = e.clientX - r.left;
-      ptr.y = e.clientY - r.top;
-      ptr.has = true;
+      var r = hero.getBoundingClientRect();
+      var x = e.clientX - r.left, y = e.clientY - r.top;
+      if (x < -120 || y < -120 || x > W + 120 || y > H + 120) {
+        if (ptr.has) { ptr.has = false; trail.length = 0; }
+        if (coord) coord.textContent = 'X 0000 / Y 0000';
+        if (reduceMotion) draw();
+        return;
+      }
+      ptr.x = x; ptr.y = y; ptr.has = true;
+      /* 快速甩动 / 程序化跳点会拉出一条横跨标题的长线：超出阈值就重新起笔 */
+      var last = trail.length ? trail[trail.length - 1] : null;
+      if (last && Math.hypot(x - last.x, y - last.y) > 90) trail.length = 0;
+      trail.push({ x: x, y: y });
+      if (trail.length > 22) trail.shift();
       var now = performance.now();
-      trail.push({ x: ptr.x, y: ptr.y });
-      if (trail.length > 26) trail.shift();
-      if (now - ptr.lastRing > 170) {
-        rings.push({ x: ptr.x, y: ptr.y, r: 0, a: .75 });
+      if (now - ptr.lastRing > 190) {
+        rings.push({ x: x, y: y, r: 6, a: .8 });
         ptr.lastRing = now;
+        if (rings.length > 7) rings.shift();
       }
-      if (rings.length > 8) rings.shift();
-      hover = hitNode(ptr.x, ptr.y);
-      if (readoutEl) {
-        var txt = 'X ' + pad(ptr.x) + ' · Y ' + pad(ptr.y) + ' · NODES 05 · LINKS 04';
-        if (hover >= 0) txt += ' · FOCUS ' + loc(SCENES[active]).nodes[hover];
-        readoutEl.textContent = txt;
-      }
-      if (reduceMotion) draw(0);
-    }
-
-    function pad(v) { return ('0000' + Math.max(0, Math.round(v))).slice(-4); }
-
-    function hitNode(x, y) {
-      for (var i = 0; i < 5; i++) {
-        var n = nodes[i];
-        if (Math.abs(x - n.x) < NODE_W / 2 + 4 && Math.abs(y - n.y) < NODE_H / 2 + 4) return i;
-      }
-      return -1;
-    }
-
-    function rr(x, y, w, h, r) {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-      ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-      ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-      ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
-      ctx.closePath();
-    }
-
-    function fitText(s, maxW) {
-      if (ctx.measureText(s).width <= maxW) return s;
-      var t = s;
-      while (t.length > 2 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
-      return t + '…';
-    }
-
-    function bez(a, b, t) {
-      var mx = (a.x + b.x) / 2;
-      var u = 1 - t;
-      return {
-        x: u * u * u * a.x + 3 * u * u * t * mx + 3 * u * t * t * mx + t * t * t * b.x,
-        y: u * u * u * a.y + 3 * u * u * t * a.y + 3 * u * t * t * b.y + t * t * t * b.y
-      };
+      if (coord) coord.textContent = 'X ' + pad(x) + ' / Y ' + pad(y);
+      if (reduceMotion) draw();
     }
 
     function update(dt) {
-      for (var i = 0; i < 5; i++) {
-        nodes[i].x += (nodes[i].tx - nodes[i].x) * Math.min(1, dt * 7);
-        nodes[i].y += (nodes[i].ty - nodes[i].y) * Math.min(1, dt * 7);
-      }
-      for (i = 0; i < packets.length; i++) {
-        packets[i].p = (packets[i].p + dt * packets[i].sp) % 1;
+      t += dt;
+      var i, p;
+      for (i = 0; i < parts.length; i++) {
+        p = parts[i];
+        p.x += p.vx * dt;
+        p.y += (p.vy + Math.sin(t * .6 + p.ph) * 2.4) * dt;
+        if (ptr.has) {
+          var dx = ptr.x - p.x, dy = ptr.y - p.y;
+          var d = Math.sqrt(dx * dx + dy * dy) || 1;
+          if (d < 195) {
+            var f = 1 - d / 195;
+            /* 朝指针吸附 + 切向旋转，聚成一张临时星图；太近则反推，避免堆成一点 */
+            var pull = d < 30 ? -f * 90 : f * 135;
+            p.x += (dx / d * pull - dy / d * f * 68) * dt;
+            p.y += (dy / d * pull + dx / d * f * 68) * dt;
+          }
+        }
+        if (p.x < -8) p.x = W + 8; else if (p.x > W + 8) p.x = -8;
+        if (p.y < -8) p.y = H + 8; else if (p.y > H + 8) p.y = -8;
       }
       for (i = rings.length - 1; i >= 0; i--) {
         rings[i].r += dt * 105;
         rings[i].a -= dt * .85;
         if (rings[i].a <= 0) rings.splice(i, 1);
       }
-      if (flash > 0) flash = Math.max(0, flash - dt * 1.5);
-      scanX = (scanX + dt * 62) % (W + 120);
-      if (trail.length && !ptr.has) trail.shift();
+      if (!ptr.has && trail.length) trail.shift();
+      scanY = (scanY + dt * 46) % (H + 180);
     }
 
-    function drawMesh() {
-      var step = 38;
-      var cols = Math.ceil(W / step) + 1, rows = Math.ceil(H / step) + 1;
-      var pts = [], j, i;
-      for (j = 0; j < rows; j++) {
-        var row = [];
-        for (i = 0; i < cols; i++) {
-          var bx = i * step, by = j * step;
-          var dx = bx - ptr.x, dy = by - ptr.y;
-          var d = Math.sqrt(dx * dx + dy * dy) || 1;
-          var inf = ptr.has ? Math.max(0, 1 - d / 185) : 0;
-          var pull = inf * inf * 24;
-          row.push({ x: bx + dx / d * pull, y: by + dy / d * pull, hot: inf });
-        }
-        pts.push(row);
-      }
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = C.mesh;
-      ctx.beginPath();
-      for (j = 0; j < rows; j++) {
-        for (i = 0; i < cols; i++) {
-          var p = pts[j][i];
-          if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+    function buildPairs() {
+      pairs.length = 0;
+      var lim = W < 620 ? 96 : 122, lim2 = lim * lim;
+      var deg = new Uint8Array(parts.length);
+      for (var i = 0; i < parts.length; i++) {
+        if (deg[i] >= 3) continue;
+        var a = parts[i];
+        for (var j = i + 1; j < parts.length; j++) {
+          if (deg[j] >= 3) continue;
+          var b = parts[j];
+          var dx = a.x - b.x, dy = a.y - b.y;
+          var d2 = dx * dx + dy * dy;
+          if (d2 > lim2) continue;
+          var k = 1 - Math.sqrt(d2) / lim;
+          pairs.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y, k: k });
+          deg[i]++; deg[j]++;
+          if (deg[i] >= 3) break;
         }
       }
-      for (i = 0; i < cols; i++) {
-        for (j = 0; j < rows; j++) {
-          var q = pts[j][i];
-          if (j === 0) ctx.moveTo(q.x, q.y); else ctx.lineTo(q.x, q.y);
-        }
-      }
-      ctx.stroke();
+    }
 
-      /* 指针附近的网格点被点亮，并向指针拉出细丝 */
-      if (ptr.has) {
-        ctx.strokeStyle = 'rgba(94,234,212,.16)';
-        ctx.beginPath();
-        for (j = 0; j < rows; j++) for (i = 0; i < cols; i++) {
-          var a = pts[j][i];
-          if (a.hot > .42) { ctx.moveTo(ptr.x, ptr.y); ctx.lineTo(a.x, a.y); }
-        }
-        ctx.stroke();
-        for (j = 0; j < rows; j++) for (i = 0; i < cols; i++) {
-          var b = pts[j][i];
-          if (b.hot > .02) {
-            ctx.fillStyle = 'rgba(94,234,212,' + (b.hot * .8).toFixed(3) + ')';
-            var sz = 1 + b.hot * 2.2;
-            ctx.fillRect(b.x - sz / 2, b.y - sz / 2, sz, sz);
-          }
+    function drawTicks() {
+      var step = W < 620 ? 62 : 78;
+      ctx.lineWidth = 1;
+      for (var y = step * .5; y < H; y += step) {
+        for (var x = step * .5; x < W; x += step) {
+          var hot = ptr.has ? Math.max(0, 1 - Math.hypot(x - ptr.x, y - ptr.y) / 170) : 0;
+          ctx.strokeStyle = rgba(pal.sig, pal.gridA + hot * .22);
+          ctx.beginPath();
+          ctx.moveTo(x - 2, y); ctx.lineTo(x + 2, y);
+          ctx.moveTo(x, y - 2); ctx.lineTo(x, y + 2);
+          ctx.stroke();
         }
       }
+    }
+
+    function drawScan() {
+      if (scanY < 48 || scanY > H) return;
+      var band = 26;
+      var g = ctx.createLinearGradient(0, scanY - band, 0, scanY);
+      g.addColorStop(0, rgba(pal.sig, 0));
+      g.addColorStop(1, rgba(pal.sig, .04));
+      ctx.fillStyle = g;
+      ctx.fillRect(0, scanY - band, W, band);
+      /* 横向渐隐，避免两端出现硬边 */
+      var gh = ctx.createLinearGradient(0, 0, W, 0);
+      gh.addColorStop(0, rgba(pal.sig, 0));
+      gh.addColorStop(.1, rgba(pal.sig, .22));
+      gh.addColorStop(.9, rgba(pal.sig, .22));
+      gh.addColorStop(1, rgba(pal.sig, 0));
+      ctx.strokeStyle = gh;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, scanY); ctx.lineTo(W, scanY); ctx.stroke();
     }
 
     function drawLinks() {
-      ctx.lineWidth = 1.1;
-      LINKS.forEach(function (lk, k) {
-        var a = nodes[lk[0]], b = nodes[lk[1]];
-        var active = hover === lk[0] || hover === lk[1];
-        ctx.strokeStyle = active ? C.wireHot : C.wire;
+      buildPairs();
+      ctx.lineWidth = 1;
+      for (var i = 0; i < pairs.length; i++) {
+        var l = pairs[i];
+        var my = (l.ay + l.by) / 2;
+        var nearP = ptr.has
+          ? Math.max(0, 1 - Math.hypot((l.ax + l.bx) / 2 - ptr.x, my - ptr.y) / 200) : 0;
+        ctx.strokeStyle = rgba(nearP > .1 ? pal.sig : pal.line,
+          (pal.linkA * l.k + nearP * .3) * edge(my));
         ctx.beginPath();
-        var mx = (a.x + b.x) / 2;
-        ctx.moveTo(a.x, a.y);
-        ctx.bezierCurveTo(mx, a.y, mx, b.y, b.x, b.y);
+        ctx.moveTo(l.ax, l.ay); ctx.lineTo(l.bx, l.by);
         ctx.stroke();
-        if (!packets.length) return;
-        var pk = packets[k % packets.length];
-        if (!pk) return;
-        var p = bez(a, b, pk.p);
-        ctx.fillStyle = C.accent;
-        ctx.shadowColor = C.accent; ctx.shadowBlur = 9;
-        ctx.fillRect(p.x - 2.5, p.y - 2.5, 5, 5);
-        ctx.shadowBlur = 0;
-      });
+        /* 少量数据包沿连线流动：硬边小方块，不做柔化 */
+        if (i % 5 === 0) {
+          var p = (t * .34 + i * .173) % 1;
+          var px = l.ax + (l.bx - l.ax) * p, py = l.ay + (l.by - l.ay) * p;
+          if (pal.glow) { ctx.shadowColor = rgba(pal.sig, 1); ctx.shadowBlur = pal.glow; }
+          ctx.fillStyle = rgba(pal.sig, (.5 + nearP * .5) * edge(py));
+          ctx.fillRect(px - 1.8, py - 1.8, 3.6, 3.6);
+          ctx.shadowBlur = 0;
+        }
+      }
     }
 
-    function drawNodes() {
-      var s = loc(SCENES[active]);
-      for (var i = 0; i < 5; i++) {
-        var n = nodes[i], x = n.x - NODE_W / 2, y = n.y - NODE_H / 2;
-        var on = hover === i;
-        rr(x, y, NODE_W, NODE_H, 7);
-        ctx.fillStyle = C.node; ctx.fill();
-        ctx.strokeStyle = on ? C.coral : C.nodeLine;
-        ctx.lineWidth = on ? 1.4 : 1;
-        ctx.stroke();
-        /* 左侧编号条 */
-        ctx.fillStyle = on ? 'rgba(242,104,92,.16)' : 'rgba(94,234,212,.09)';
-        rr(x + 1, y + 1, 27, NODE_H - 2, 6); ctx.fill();
-        ctx.font = '400 9px ' + 'ui-monospace,Consolas,monospace';
-        ctx.fillStyle = on ? C.coral : C.accent;
-        ctx.textBaseline = 'middle';
-        ctx.fillText('0' + (i + 1), x + 8, n.y);
-        ctx.font = '500 10.5px -apple-system,"Segoe UI","Microsoft YaHei",sans-serif';
-        ctx.fillStyle = C.text;
-        ctx.fillText(fitText(s.nodes[i], NODE_W - 44), x + 34, n.y);
-        ctx.fillStyle = on ? C.coral : 'rgba(94,234,212,.55)';
-        ctx.beginPath(); ctx.arc(x + NODE_W - 10, y + 9, 2, 0, Math.PI * 2); ctx.fill();
+    function drawParts() {
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i];
+        var pulse = .78 + Math.sin(t * 1.5 + p.ph) * .22;
+        var hot = ptr.has ? Math.max(0, 1 - Math.hypot(p.x - ptr.x, p.y - ptr.y) / 185) : 0;
+        var a = (pal.dotA * p.a * pulse + hot * .42) * edge(p.y);
+        var s = p.s * (1 + hot * .5);
+        ctx.fillStyle = rgba(hot > .35 ? pal.sig : pal.dot, a);
+        if (pal.glow && hot > .5) { ctx.shadowColor = rgba(pal.sig, 1); ctx.shadowBlur = pal.glow; }
+        ctx.fillRect(p.x - s, p.y - s, s * 2, s * 2);
+        ctx.shadowBlur = 0;
+        if (p.anchor) {
+          ctx.strokeStyle = rgba(pal.sig, a * .5);
+          ctx.lineWidth = 1;
+          ctx.strokeRect(p.x - s - 3, p.y - s - 3, (s + 3) * 2, (s + 3) * 2);
+        }
       }
     }
 
     function drawPointer() {
-      /* 发光轨迹 */
-      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      for (var i = 1; i < trail.length; i++) {
-        var a = i / trail.length;
-        ctx.strokeStyle = 'rgba(94,234,212,' + (a * a * .6).toFixed(3) + ')';
-        ctx.lineWidth = .8 + a * 2;
-        if (i > trail.length - 7) { ctx.shadowColor = C.accent; ctx.shadowBlur = 10; }
+      /* 指针星图：近邻粒子被连到指针 */
+      if (ptr.has) {
+        var cnt = 0;
+        ctx.lineWidth = 1;
+        for (var i = 0; i < parts.length && cnt < 12; i++) {
+          var p = parts[i];
+          var d = Math.hypot(p.x - ptr.x, p.y - ptr.y);
+          if (d > 200) continue;
+          ctx.strokeStyle = rgba(pal.sig, (1 - d / 200) * .7 * edge((p.y + ptr.y) / 2));
+          ctx.beginPath();
+          ctx.moveTo(ptr.x, ptr.y); ctx.lineTo(p.x, p.y);
+          ctx.stroke();
+          cnt++;
+        }
+      }
+      /* 轨迹：硬线，越旧越淡 */
+      ctx.lineCap = 'round';
+      for (var j = 1; j < trail.length; j++) {
+        var k = j / trail.length;
+        ctx.strokeStyle = rgba(pal.sig, k * k * .55);
+        ctx.lineWidth = .8 + k * 1.9;
         ctx.beginPath();
-        ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
-        ctx.lineTo(trail[i].x, trail[i].y);
+        ctx.moveTo(trail[j - 1].x, trail[j - 1].y);
+        ctx.lineTo(trail[j].x, trail[j].y);
         ctx.stroke();
       }
-      ctx.shadowBlur = 0;
-      /* 雷达环 */
       rings.forEach(function (r) {
-        ctx.strokeStyle = 'rgba(94,234,212,' + Math.max(0, r.a * .55).toFixed(3) + ')';
+        ctx.strokeStyle = rgba(pal.sig, Math.max(0, r.a * .55));
         ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, 6.2832); ctx.stroke();
       });
       if (!ptr.has) return;
-      /* 十字准星 + 方括号 */
-      ctx.strokeStyle = 'rgba(94,234,212,.85)'; ctx.lineWidth = 1;
+      /* 准星 + 中心环 + 方括号 */
+      ctx.strokeStyle = rgba(pal.sig, .9);
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(ptr.x - 15, ptr.y); ctx.lineTo(ptr.x - 6, ptr.y);
-      ctx.moveTo(ptr.x + 6, ptr.y); ctx.lineTo(ptr.x + 15, ptr.y);
-      ctx.moveTo(ptr.x, ptr.y - 15); ctx.lineTo(ptr.x, ptr.y - 6);
-      ctx.moveTo(ptr.x, ptr.y + 6); ctx.lineTo(ptr.x, ptr.y + 15);
+      ctx.moveTo(ptr.x - 16, ptr.y); ctx.lineTo(ptr.x - 7, ptr.y);
+      ctx.moveTo(ptr.x + 7, ptr.y); ctx.lineTo(ptr.x + 16, ptr.y);
+      ctx.moveTo(ptr.x, ptr.y - 16); ctx.lineTo(ptr.x, ptr.y - 7);
+      ctx.moveTo(ptr.x, ptr.y + 7); ctx.lineTo(ptr.x, ptr.y + 16);
       ctx.stroke();
-      ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 4, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = 'rgba(94,234,212,.3)';
-      var g = 21;
+      ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 4.5, 0, 6.2832); ctx.stroke();
+      ctx.strokeStyle = rgba(pal.sig, .32);
+      var g = 23;
       ctx.beginPath();
-      ctx.moveTo(ptr.x - g, ptr.y - g + 6); ctx.lineTo(ptr.x - g, ptr.y - g); ctx.lineTo(ptr.x - g + 6, ptr.y - g);
-      ctx.moveTo(ptr.x + g - 6, ptr.y - g); ctx.lineTo(ptr.x + g, ptr.y - g); ctx.lineTo(ptr.x + g, ptr.y - g + 6);
-      ctx.moveTo(ptr.x - g, ptr.y + g - 6); ctx.lineTo(ptr.x - g, ptr.y + g); ctx.lineTo(ptr.x - g + 6, ptr.y + g);
-      ctx.moveTo(ptr.x + g - 6, ptr.y + g); ctx.lineTo(ptr.x + g, ptr.y + g); ctx.lineTo(ptr.x + g, ptr.y + g - 6);
+      ctx.moveTo(ptr.x - g, ptr.y - g + 7); ctx.lineTo(ptr.x - g, ptr.y - g); ctx.lineTo(ptr.x - g + 7, ptr.y - g);
+      ctx.moveTo(ptr.x + g - 7, ptr.y - g); ctx.lineTo(ptr.x + g, ptr.y - g); ctx.lineTo(ptr.x + g, ptr.y - g + 7);
+      ctx.moveTo(ptr.x - g, ptr.y + g - 7); ctx.lineTo(ptr.x - g, ptr.y + g); ctx.lineTo(ptr.x - g + 7, ptr.y + g);
+      ctx.moveTo(ptr.x + g - 7, ptr.y + g); ctx.lineTo(ptr.x + g, ptr.y + g); ctx.lineTo(ptr.x + g, ptr.y + g - 7);
       ctx.stroke();
+      /* 指针核心一点桃红，呼应 LOGO 跳色 */
+      ctx.fillStyle = rgba(pal.coral, .85);
+      ctx.fillRect(ptr.x - 1.5, ptr.y - 1.5, 3, 3);
     }
 
-    function draw(dt) {
+    function draw() {
       ctx.clearRect(0, 0, W, H);
-      drawMesh();
-      /* 慢速扫描线 */
-      if (scanX < W) {
-        var g = ctx.createLinearGradient(scanX - 28, 0, scanX + 4, 0);
-        g.addColorStop(0, 'rgba(94,234,212,0)');
-        g.addColorStop(1, 'rgba(94,234,212,.055)');
-        ctx.fillStyle = g;
-        ctx.fillRect(scanX - 28, 0, 32, H);
-      }
+      drawTicks();
+      drawScan();
       drawLinks();
-      drawNodes();
+      drawParts();
       drawPointer();
-      if (flash > 0) {
-        var fx = W * (1 - flash);
-        ctx.fillStyle = 'rgba(94,234,212,' + (flash * .07).toFixed(3) + ')';
-        ctx.fillRect(0, 0, W, H);
-        ctx.strokeStyle = 'rgba(94,234,212,' + (flash * .8).toFixed(3) + ')';
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(fx, 0); ctx.lineTo(fx, H); ctx.stroke();
-      }
     }
 
     function loop(ts) {
@@ -851,56 +726,89 @@
       var dt = lastTs ? Math.min(.05, (ts - lastTs) / 1000) : 1 / 60;
       lastTs = ts;
       frame++;
+      /* 用视口距离判断活性，IntersectionObserver 在 iframe / 程序化滚动里会误判 */
       if ((frame % 6) === 0) {
-        var r = stage.getBoundingClientRect();
+        var r = hero.getBoundingClientRect();
         var vh = window.innerHeight || document.documentElement.clientHeight || 800;
-        near = r.bottom > -240 && r.top < vh + 240;
+        near = r.bottom > -200 && r.top < vh + 200;
       }
       if (!near || document.hidden) return;
       update(dt);
-      draw(dt);
+      draw();
     }
 
-    /* 事件 */
-    tabs.forEach(function (t, i) {
-      t.addEventListener('click', function () { setScene(i); });
-    });
-    stage.addEventListener('pointermove', onMove, { passive: true });
-    stage.addEventListener('pointerleave', function () {
-      ptr.has = false; hover = -1; trail.length = 0;
-      if (readoutEl) readoutEl.textContent = 'X 0000 · Y 0000 · NODES 05 · LINKS 04';
-      if (reduceMotion) draw(0);
-    });
-    stage.addEventListener('pointerdown', function (e) {
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointerdown', function (e) {
       onMove(e);
-      rings.push({ x: ptr.x, y: ptr.y, r: 0, a: 1 });
-      flash = .7;
+      if (ptr.has) rings.push({ x: ptr.x, y: ptr.y, r: 3, a: 1 });
+      if (reduceMotion) draw();
+    }, { passive: true });
+    document.addEventListener('pointerleave', function () {
+      ptr.has = false; trail.length = 0;
+      if (coord) coord.textContent = 'X 0000 / Y 0000';
+      if (reduceMotion) draw();
     });
     window.addEventListener('resize', resize, { passive: true });
-    document.addEventListener('ic:lang', function () { paintText(); if (reduceMotion) draw(0); });
-    document.addEventListener('ic:theme', function () { if (reduceMotion) draw(0); });
+    if (window.ResizeObserver) {
+      var ro = new ResizeObserver(function () { resize(); });
+      ro.observe(hero);
+    }
+    document.addEventListener('ic:theme', function () {
+      pal = palette();
+      if (reduceMotion) draw();
+    });
 
     resize();
-    paintText();
-    packets = LINKS.map(function (_, k) { return { p: k * .24, sp: .3 + k * .04 }; });
-    rings.push({ x: W * .5, y: H * .38, r: 20, a: .5 });
-    draw(0);
+    draw();
     if (!reduceMotion) raf = requestAnimationFrame(loop);
 
     /* 仅供无头渲染校验：rAF 在后台标签页会被节流，用 tick() 强制步进 */
-    if (/[?&]debug=field/.test(location.search)) {
-      window.__field = {
-        tick: function (n) { for (var i = 0; i < (n || 1); i++) { update(1 / 60); draw(1 / 60); } },
+    if (/[?&]debug=hero/.test(location.search)) {
+      window.__hero = {
+        tick: function (n) { for (var i = 0; i < (n || 1); i++) { update(1 / 60); draw(); } },
         move: function (u, v) {
-          var r = stage.getBoundingClientRect();
+          var r = hero.getBoundingClientRect();
           onMove({ clientX: r.left + r.width * u, clientY: r.top + r.height * v });
         },
-        scene: setScene,
         state: function () {
-          return { W: W, H: H, scene: active, trail: trail.length, rings: rings.length,
-                   packets: packets.length, nodes: nodes.length, visible: canvas.width > 0 };
+          return { W: W, H: H, parts: parts.length, pairs: pairs.length,
+                   rings: rings.length, trail: trail.length, visible: canvas.width > 0 };
+        },
+        pixels: function () {
+          var d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          var n = 0, sum = 0;
+          for (var i = 3; i < d.length; i += 4) { if (d[i] > 6) { n++; sum += d[i]; } }
+          return { inkPixels: n, avgA: n ? Math.round(sum / n) : 0 };
         }
       };
     }
+  })();
+
+  /* ---------- 功能卡：进入视口时沿链路依次点亮一次 ---------- */
+  (function featureFlow() {
+    var grid = $('.feature-grid');
+    if (!grid) return;
+    var done = false;
+    function fire() {
+      if (done) return;
+      done = true;
+      grid.classList.add('flow');
+      /* 动画结束后撤掉 class，否则 fill-mode 会一直压住 hover 状态 */
+      setTimeout(function () { grid.classList.remove('flow'); }, 1500);
+      window.removeEventListener('scroll', check);
+    }
+    function check() {
+      var r = grid.getBoundingClientRect();
+      var vh = window.innerHeight || 800;
+      if (r.top < vh * .92 && r.bottom > 0) fire();
+    }
+    if (window.IntersectionObserver && !reduceMotion) {
+      var io = new IntersectionObserver(function (es) {
+        if (es[0] && es[0].isIntersecting) { fire(); io.disconnect(); }
+      }, { threshold: .15 });
+      io.observe(grid);
+    }
+    window.addEventListener('scroll', check, { passive: true });
+    check();
   })();
 })();

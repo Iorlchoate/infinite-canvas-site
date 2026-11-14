@@ -63,7 +63,8 @@
 <main id="top">
 
   <!-- HERO -->
-  <section class="hero wrap">
+  <section class="hero wrap" id="hero">
+    <canvas id="heroParticles" aria-hidden="true"></canvas>
     <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="hero.eyebrow">LOCAL-FIRST AI CANVAS</span><span class="eyebrow-line"></span></div>
     <h1 class="hero-title"><span class="line"><span data-i18n="hero.title1">把想法、生成与沉淀</span></span><span class="line"><span class="gradient-text" data-i18n="hero.title2">都放进一张无限画布</span></span></h1>
     <p class="hero-sub" data-i18n="hero.sub">无限画布是一台跑在你自己电脑上的 AI 创作工作台。内置便携运行时，双击即用；自定义工作流、在线生图、无限画布、素材库串成一条流，从一句提示词到归档成册，不用离开画布。</p>
@@ -90,7 +91,7 @@
       <span class="hud-sep"></span>
       <span class="hud-live"><i></i>LINK ACTIVE</span>
       <span class="hud-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-      <span class="hud-coord">X 0000 / Y 0000</span>
+      <span class="hud-coord" id="heroCoord">X 0000 / Y 0000</span>
     </div>
 
     <!-- 产品界面示意（纯 CSS/SVG，无外部资源） -->
@@ -158,55 +159,6 @@
     </div>
   </section>
 
-  <!-- 运用场景控制台：四个真实工作流 + 矢量场画布 -->
-  <section class="field-band" id="field" aria-label="运用场景演示" data-i18n-aria="field.aria">
-    <div class="field-shell wrap">
-      <div class="field-head">
-        <div class="field-intro">
-          <div class="field-eyebrow"><span class="live-dot"></span><span data-i18n="field.eyebrow">FIELD NOTES · 04 WORKFLOWS</span></div>
-          <h2 class="field-title" data-i18n="field.title">一张画布，走完一个方案</h2>
-          <p class="field-lead" data-i18n="field.lead">不是「什么都能连」。下面四件真实的工作，从第一步到最后一步都留在同一张布上。点一个场景，看它怎么走。</p>
-        </div>
-        <div class="field-sys" aria-hidden="true">
-          <div class="sys-row"><span>SYS</span><b>LOCAL / OFFLINE-READY</b></div>
-          <div class="sys-row"><span>MODE</span><b>CANVAS · NODE GRAPH</b></div>
-          <div class="sys-row"><span>LINK</span><b class="on">● ACTIVE</b></div>
-          <div class="sys-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><em>12</em></div>
-        </div>
-      </div>
-
-      <div class="field-body">
-        <div class="field-list" role="tablist" aria-label="运用场景" data-i18n-aria="field.listaria">
-          <button class="field-tab active" type="button" role="tab" aria-selected="true" data-scene="0">
-            <span class="fi-no">01</span><span class="fi-text"><b data-i18n="field.s1">概念方案推演</b><small data-i18n="field.s1sub">总平面 → 风格迁移 → 概念效果</small></span><span class="fi-mark" aria-hidden="true">↗</span>
-          </button>
-          <button class="field-tab" type="button" role="tab" aria-selected="false" data-scene="1">
-            <span class="fi-no">02</span><span class="fi-text"><b data-i18n="field.s2">立面改造比选</b><small data-i18n="field.s2sub">实拍照片 → 局部重绘 → 材质比选</small></span><span class="fi-mark" aria-hidden="true">↗</span>
-          </button>
-          <button class="field-tab" type="button" role="tab" aria-selected="false" data-scene="2">
-            <span class="fi-no">03</span><span class="fi-text"><b data-i18n="field.s3">多视角汇报</b><small data-i18n="field.s3sub">效果图 → 扩展出图 → 汇报版式</small></span><span class="fi-mark" aria-hidden="true">↗</span>
-          </button>
-          <button class="field-tab" type="button" role="tab" aria-selected="false" data-scene="3">
-            <span class="fi-no">04</span><span class="fi-text"><b data-i18n="field.s4">素材沉淀复用</b><small data-i18n="field.s4sub">批量采集 → 分组 → 下个项目复用</small></span><span class="fi-mark" aria-hidden="true">↗</span>
-          </button>
-        </div>
-
-        <div class="field-stage" id="fieldStage">
-          <canvas id="fieldCanvas" aria-hidden="true"></canvas>
-          <span class="stage-corner tl" aria-hidden="true"></span><span class="stage-corner tr" aria-hidden="true"></span>
-          <span class="stage-corner bl" aria-hidden="true"></span><span class="stage-corner br" aria-hidden="true"></span>
-          <div class="stage-top" aria-hidden="true"><span>CANVAS FIELD / 05 NODES</span><span id="fieldMode">CONCEPT</span></div>
-          <div class="stage-readout" id="fieldReadout" aria-hidden="true">X 0000 · Y 0000 · NODES 05 · LINKS 04</div>
-          <div class="stage-desc" aria-live="polite">
-            <span class="sd-tag" id="fieldTag">SCENE 01 / 04</span>
-            <p id="fieldDesc">拿到一张手绘总平面和三张参考照片：拖进画布、连到风格迁移节点，一小时内出四版概念效果，选中的直接归入方案 A。</p>
-            <div class="sd-flow" id="fieldFlow"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- WHY LOCAL -->
   <section class="section wrap" id="why" data-ch="01">
     <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="why.eyebrow">LOCAL BY DESIGN</span><span class="eyebrow-line"></span></div>
@@ -248,7 +200,7 @@
         <p data-i18n="f2.p">直连云端 API 生成。参考图支持 1–9 张自定义，每张带固定 IMAGE 编号，点编号即可插入提示词，写 Prompt 时直接指代对应图片。</p>
         <div class="chip-row"><span class="chip">IMAGE 0–8</span><span class="chip" data-i18n="f2.c2">多参考图</span></div>
       </article>
-      <article class="feature glass mark">
+      <article class="feature glass">
         <div class="feature-top"><span class="feature-no">03</span><span class="feature-icon" aria-hidden="true">⌘</span></div>
         <h3 data-i18n="f3.t">无限画布</h3>
         <p data-i18n="f3.p">节点自由摆放、连线组合。文生图、图生图、局部重绘、扩展出图、九宫格多视角都在同一张画布上完成。</p>
