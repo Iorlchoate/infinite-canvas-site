@@ -443,6 +443,7 @@
      放大，边缘天然再柔一层。色彩沿用 LOGO 石墨灰 + 正红，不引入第三种彩色。
      ===================================================================== */
   (function heroGlow() {
+    if (window.__icFluid) return;   /* WebGL2 流体已接管，2D 面光只做降级兜底 */
     var hero = $('#hero');
     var canvas = $('#heroGlow');
     var coord = $('#heroCoord');

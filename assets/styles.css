@@ -184,9 +184,13 @@ html[data-theme="dark"] .ico-moon{display:none}
 
 /* ---------- HERO ---------- */
 .hero{position:relative;isolation:isolate;padding-top:92px;padding-bottom:40px;text-align:left}
-.hero > :not(#heroGlow):not(.iso-deco){position:relative;z-index:1}
-#heroGlow{position:absolute;inset:0;width:100%;height:100%;z-index:0;
+.hero > :not(#heroGlow):not(#heroFluid):not(.iso-deco){position:relative;z-index:1}
+#heroGlow,#heroFluid{position:absolute;inset:0;width:100%;height:100%;z-index:0;
   display:block;pointer-events:none}
+/* 与参考站一致：光晕向下渐隐，不压到下方的产品窗口 */
+/* 四边渐隐：消除 canvas 的矩形硬边，光晕像从纸面里透出来 */
+#heroFluid{-webkit-mask-image:radial-gradient(ellipse 74% 70% at 54% 44%,#000 26%,transparent 100%);
+  mask-image:radial-gradient(ellipse 74% 70% at 54% 44%,#000 26%,transparent 100%)}
 .hero .eyebrow{justify-content:flex-start;margin-bottom:24px}
 .hero .eyebrow .eyebrow-line:first-child{display:none}
 .hero .eyebrow .eyebrow-line:last-child{width:80px}
@@ -399,7 +403,7 @@ html[data-theme="dark"] .ico-moon{display:none}
   .hud-wave,.hud-coord{display:none}
   .section[data-ch]::before{top:22px}
   .section[data-ch]::after{top:34px}
-  #heroGlow{opacity:.7}
+  #heroGlow,#heroFluid{opacity:.7}
   .eyebrow{letter-spacing:.22em;gap:10px}
   .eyebrow-line{width:28px}
   .hero-window{margin-top:44px}
