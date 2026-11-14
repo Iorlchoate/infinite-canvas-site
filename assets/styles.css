@@ -4,12 +4,12 @@
 :root{
   /* 与程序界面（brief-workbench.html）同源的浅雾灰 / 纯白 / 发丝边 */
   --paper:#ffffff;
-  --fog:#f9fafb;
-  --mist:#f8fafc;
+  --fog:#f5f7f9;
+  --mist:#f1f4f7;
   --ink:#111827;
   --ink-hover:#33363c;
-  --slate:#64748b;
-  --ash:#94a3b8;
+  --slate:#4b5563;
+  --ash:#7b8794;
   --line:#e2e8f0;
   --line-soft:#edf0f3;
   --line-strong:#d5dce5;
@@ -38,9 +38,9 @@
   /* 系统无衬线：macOS=SF+苹方，Windows=Segoe UI+雅黑；不加载任何外部字体 */
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue","PingFang SC","Hiragino Sans GB","HarmonyOS Sans SC","Microsoft YaHei UI","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Noto Sans SC",Arial,sans-serif;
   --head:var(--serif);          /* 全站标题只认这一个变量；改成 var(--sans) 即可整体切无衬线 */
-  /* 极淡坐标网格；标题笔刷用极淡红，与 LOGO 正红同源 */
-  --grid-line:rgba(60,65,73,.035);
-  --brush:rgba(239,68,68,.11);
+  /* 极淡坐标网格；浅色标题笔刷用中性灰，避免白底上出现脏粉条 */
+  --grid-line:rgba(60,65,73,.040);
+  --brush:rgba(60,65,73,.035);
 }
 /* ---------- 深色主题：同一套令牌反转，彩度整体压低 ---------- */
 html[data-theme="dark"]{

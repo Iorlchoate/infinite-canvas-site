@@ -50,18 +50,29 @@
   var MAX_PIXEL_RATIO = 1.5;
   var IDLE_AFTER_MS = 2600;      /* 无鼠标 2.6s 后自动流动，静态首屏也有光 */
 
-  /* 三色循环沿用参考站的 Oklab 插值机制。默认照搬它的高饱和蓝色，
-     因为这套线性光管线对红色不友好（会洗暗、洗灰）。加 ?glow=brand
-     可切回 LOGO 同源红系，明暗两套分别给不透明度。 */
+  /* 三色循环沿用参考站的 Oklab 插值机制。深色照搬它的高饱和蓝；
+     浅色不能照搬：白底上 source-over 只能染色/变暗，饱和蓝会变成
+     一层灰蓝水印，且与 LOGO 正红、标题笔刷打架。因此浅色改用与
+     石墨灰同源的低饱和冷灰蓝，只留「纸上水痕」的形体与流动。
+     加 ?glow=brand 可切暖灰系。 */
   var REFERENCE = {
     dark:  { colors: ['#1f4bff', '#55bdff', '#16c6e8'], opacity: 1.00 },
-    light: { colors: ['#1f4bff', '#55bdff', '#16c6e8'], opacity: 0.20 }
+    light: { colors: ['#8096aa', '#a3b7c7', '#c6d5e0'], opacity: 0.32 }
   };
   var BRAND = {
     dark:  { colors: ['#ff2d2d', '#ff6a3d', '#ffb347'], opacity: 1.00 },
-    light: { colors: ['#ef4444', '#ff8a66', '#ffc089'], opacity: 0.22 }
+    light: { colors: ['#bd9188', '#d2ada3', '#e3ccc3'], opacity: 0.30 }
   };
   var PALETTES = /[?&]glow=brand/.test(location.search) ? BRAND : REFERENCE;
+  /* 浅色策略对比开关：只覆盖 light，深色始终是参考站那团蓝。
+     默认 = 与石墨灰同源的冷灰「纸上水痕」（推荐）；
+     ?light=blue 保留改前的高饱和蓝，?light=warm 换 LOGO 红系低饱和暖灰。 */
+  var LIGHT_VARIANTS = {
+    blue: { colors: ['#1f4bff', '#55bdff', '#16c6e8'], opacity: 0.20 },
+    warm: { colors: ['#bd9188', '#d2ada3', '#e3ccc3'], opacity: 0.30 }
+  };
+  var lightKey = (location.search.match(/[?&]light=(blue|warm)/) || [])[1];
+  if (lightKey) PALETTES = { dark: PALETTES.dark, light: LIGHT_VARIANTS[lightKey] };
 
   var vertexSource = '#version 300 es\n' +
     'in vec2 position;\n' +
